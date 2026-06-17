@@ -21,11 +21,20 @@ function shuffle(array) {
  * @param {String} algorithm - Selected algorithm ('sequential', 'random', 'difficult_first').
  * @returns {Array} - Ordered array of questions to study.
  */
-export function prepareSession(questions, category, algorithm) {
+export function prepareSession(questions, category, algorithm, onlyDifficult = false) {
   // 1. Filter by category
   let filtered = questions;
   if (category && category !== 'all') {
     filtered = questions.filter(q => q.category === category);
+  }
+
+  // 1b. Filter by difficulty
+  if (onlyDifficult) {
+    const stats = getStats();
+    filtered = filtered.filter(q => {
+      const qStats = stats[q.id] || {};
+      return qStats.isDifficult || q.isStarred;
+    });
   }
 
   if (filtered.length === 0) {

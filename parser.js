@@ -67,9 +67,7 @@ function finalizeQuestion(q) {
   q.rawBody = bodyText;
 
   // Extract short answer (from "Краткий ответ", "Код", or "Ответ")
-  const shortAnswerMatch = bodyText.match(/\*\s+\*\*Краткий ответ\*\*:\s*([\s\S]*?)(?=\n\*\s+\*\*|\n\n|$)/i) ||
-                           bodyText.match(/\*\s+\*\*Код\*\*:\s*([\s\S]*?)(?=\n\*\s+\*\*|\n\n|$)/i) ||
-                           bodyText.match(/\*\s+\*\*Ответ\*\*:\s*([\s\S]*?)(?=\n\*\s+\*\*|\n\n|$)/i);
+  const shortAnswerMatch = bodyText.match(/\*\s+\*\*(?:Краткий ответ|Код|Ответ)\*\*:\s*([\s\S]*?)(?=\r?\n\s*\* \*\*(?:Более расширенный ответ|Пояснение|Краткий ответ|Код|Ответ)\*\*:|$)/i);
   if (shortAnswerMatch) {
     q.shortAnswer = shortAnswerMatch[1].trim();
   } else {
@@ -77,8 +75,7 @@ function finalizeQuestion(q) {
   }
 
   // Extract detailed answer / explanation (from "Более расширенный ответ" or "Пояснение")
-  const detailedAnswerMatch = bodyText.match(/\*\s+\*\*Более расширенный ответ\*\*:\s*([\s\S]*?)(?=\n\*\s+\*\*|\n\n|$)/i) ||
-                              bodyText.match(/\*\s+\*\*Пояснение\*\*:\s*([\s\S]*?)(?=\n\*\s+\*\*|\n\n|$)/i);
+  const detailedAnswerMatch = bodyText.match(/\*\s+\*\*(?:Более расширенный ответ|Пояснение)\*\*:\s*([\s\S]*?)(?=\r?\n\s*\* \*\*(?:Более расширенный ответ|Пояснение|Краткий ответ|Код|Ответ)\*\*:|$)/i);
   if (detailedAnswerMatch) {
     q.detailedAnswer = detailedAnswerMatch[1].trim();
   } else {

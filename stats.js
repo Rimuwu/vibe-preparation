@@ -7,7 +7,37 @@ const STORAGE_KEY = 'vibe_prep_stats';
 export function getStats() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
+    const stats = raw ? JSON.parse(raw) : {};
+
+    // Migrate legacy non-namespaced keys (e.g., q_0_1 -> fr_q_0_1)
+    let migrated = false;
+    for (const key in stats) {
+      if (/^q_\d+_\d+$/.test(key)) {
+        const newKey = `fr_${key}`;
+        if (!stats[newKey]) {
+          stats[newKey] = stats[key];
+        } else {
+          // Merge old stats into the new namespace
+          stats[newKey].correctCount = (stats[newKey].correctCount || 0) + (stats[key].correctCount || 0);
+          stats[newKey].incorrectCount = (stats[newKey].incorrectCount || 0) + (stats[key].incorrectCount || 0);
+          stats[newKey].isDifficult = stats[newKey].isDifficult || stats[key].isDifficult;
+          if (stats[key].acceptedAnswers) {
+            stats[newKey].acceptedAnswers = Array.from(new Set([
+              ...(stats[newKey].acceptedAnswers || []),
+              ...stats[key].acceptedAnswers
+            ]));
+          }
+        }
+        delete stats[key];
+        migrated = true;
+      }
+    }
+
+    if (migrated) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stats));
+    }
+
+    return stats;
   } catch (e) {
     console.error('Failed to parse localStorage stats', e);
     return {};
@@ -141,4 +171,41 @@ export function getGlobalStats(questions) {
     totalQuestions: questions.length,
     accuracy
   };
+}
+
+export function exportProgressJSON() {
+  const stats = getStats();
+  const customModules = localStorage.getItem('vibe_prep_custom_modules') || '[]';
+
+  const backup = {
+    version: '1.0',
+    stats: stats,
+    customModules: JSON.parse(customModules)
+  };
+
+  return JSON.stringify(backup, null, 2);
+}
+
+export function importProgressJSON(jsonString) {
+  try {
+    const backup = JSON.parse(jsonString);
+    if (!backup || typeof backup !== 'object') {
+      throw new Error('Неверный формат резервной копии');
+    }
+
+    // Check if stats exist
+    if (backup.stats && typeof backup.stats === 'object') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(backup.stats));
+    }
+
+    // Check if customModules exist
+    if (Array.isArray(backup.customModules)) {
+      localStorage.setItem('vibe_prep_custom_modules', JSON.stringify(backup.customModules));
+    }
+
+    return true;
+  } catch (e) {
+    console.error('Import failed', e);
+    throw new Error('Не удалось разобрать файл резервной копии: ' + e.message);
+  }
 }

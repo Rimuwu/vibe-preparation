@@ -606,7 +606,7 @@ header {
 }
 
 .btn-difficult-toggle {
-  grid-column: span 2;
+  grid-column: span 1;
   background: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-main);
@@ -626,6 +626,19 @@ header {
   fill: currentColor;
 }
 
+.btn-prev-quest {
+  grid-column: span 1;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+}
+
+.btn-prev-quest:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
 .btn-accept-ans {
   background: transparent;
   border: 1px solid var(--primary);
@@ -636,6 +649,82 @@ header {
 
 .btn-accept-ans:hover {
   background: var(--primary-dark);
+}
+
+/* Modules list screen styling */
+.modules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.module-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  transition: var(--transition);
+  cursor: pointer;
+  position: relative;
+}
+
+.module-card:hover {
+  border-color: var(--primary);
+  background: rgba(138, 180, 248, 0.02);
+}
+
+.module-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.module-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.module-card-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.module-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+}
+
+.module-card-stats {
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.btn-module-delete {
+  background: transparent;
+  border: none;
+  color: var(--error);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: var(--transition);
+  padding: 0.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.btn-module-delete:hover {
+  opacity: 1;
+  background: var(--error-dark);
 }
 
 /* Modals / Screen toggles */
@@ -732,6 +821,13 @@ header {
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.stats-row:hover {
+  border-color: var(--primary);
+  background: rgba(138, 180, 248, 0.02);
 }
 
 .stats-row-info {

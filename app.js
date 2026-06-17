@@ -11,7 +11,9 @@ import {
   addAcceptedAnswer, 
   getQuestionStats, 
   getGlobalStats, 
-  resetAllStats 
+  resetAllStats,
+  exportProgressJSON,
+  importProgressJSON
 } from './stats.js';
 import { prepareSession } from './algorithms.js';
 
@@ -21,10 +23,14 @@ let sessionQueue = [];        // Questions in current study round
 let currentIndex = 0;         // Current question index in sessionQueue
 let sessionCorrect = 0;       // Correct count in current round
 let sessionAttempts = 0;      // Total attempts in current round
+let sessionAnswers = [];      // Array of true/false/null to track answers in this session
 let isCardFlipped = false;    // Visual state of the card
 let fileLoaded = false;       // If questions are loaded
+let activeModule = null;      // Selected module metadata
+let allModules = [];          // Combined list of standard and custom modules
 
 // DOM Elements
+const screenModules = document.getElementById('screen-modules');
 const screenDashboard = document.getElementById('screen-dashboard');
 const screenStudy = document.getElementById('screen-study');
 const screenStats = document.getElementById('screen-stats');
@@ -33,15 +39,21 @@ const btnShowStats = document.getElementById('btn-show-stats');
 const btnShowHome = document.getElementById('btn-show-home');
 const btnResetStats = document.getElementById('btn-reset-stats');
 
+const modulesList = document.getElementById('modules-list');
+const inputModuleName = document.getElementById('input-module-name');
+const inputModuleDesc = document.getElementById('input-module-desc');
+const moduleDropzone = document.getElementById('module-dropzone');
+const moduleFileInput = document.getElementById('module-file-input');
+const moduleDropzoneText = document.getElementById('module-dropzone-text');
+
+const btnChangeModule = document.getElementById('btn-change-module');
+const currentModuleTitle = document.getElementById('current-module-title');
+const currentModuleDesc = document.getElementById('current-module-desc');
+
 const selectCategory = document.getElementById('select-category');
 const selectAlgorithm = document.getElementById('select-algorithm');
 const selectQType = document.getElementById('select-qtype');
-
-const fileDropzone = document.getElementById('file-dropzone');
-const fileInput = document.getElementById('file-input');
-const dropzoneText = document.getElementById('dropzone-text');
-const importStats = document.getElementById('import-stats');
-const importedCount = document.getElementById('imported-count');
+const chkOnlyDifficult = document.getElementById('chk-only-difficult');
 
 const btnStartSession = document.getElementById('btn-start-session');
 const btnExitStudy = document.getElementById('btn-exit-study');
@@ -65,8 +77,13 @@ const inputFeedback = document.getElementById('input-feedback');
 
 const btnCorrect = document.getElementById('btn-correct');
 const btnIncorrect = document.getElementById('btn-incorrect');
+const btnPrevQuestion = document.getElementById('btn-prev-question');
 const btnDifficult = document.getElementById('btn-difficult');
 const btnAcceptAlternative = document.getElementById('btn-accept-alternative');
+
+const btnExportProgress = document.getElementById('btn-export-progress');
+const btnImportProgressTrigger = document.getElementById('btn-import-progress-trigger');
+const importProgressInput = document.getElementById('import-progress-input');
 
 const statsSearch = document.getElementById('stats-search');
 const statsList = document.getElementById('stats-list');
@@ -78,7 +95,7 @@ const statDifficult = document.getElementById('stat-difficult');
 const statAttempts = document.getElementById('stat-attempts');
 
 /* -------------------------------------------------------------
- * 1. Startup & File Loading
+ * 1. Startup & Module Loading
  * ------------------------------------------------------------- */
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -88,47 +105,278 @@ window.addEventListener('DOMContentLoaded', () => {
 async function initApp() {
   setupEventListeners();
   
-  // Try to load default fr.md
+  // 1. Load modules manifest and custom modules
+  await loadModules();
+  
+  // 2. Check for active session
+  const savedSession = localStorage.getItem('vibe_prep_active_session');
+  if (savedSession) {
+    try {
+      const state = JSON.parse(savedSession);
+      if (state && state.sessionQueue && state.sessionQueue.length > 0) {
+        const mod = allModules.find(m => m.id === state.moduleId);
+        if (mod) {
+          activeModule = mod;
+          // Load questions for the active module
+          let mdText = '';
+          if (activeModule.isCustom) {
+            mdText = activeModule.mdText;
+          } else {
+            const resp = await fetch(activeModule.file);
+            if (!resp.ok) throw new Error('Файл не найден');
+            mdText = await resp.text();
+          }
+          
+          dbQuestions = parseMarkdown(mdText);
+          dbQuestions.forEach(q => {
+            q.id = `${activeModule.id}_${q.id}`;
+          });
+          
+          fileLoaded = true;
+          sessionQueue = state.sessionQueue;
+          currentIndex = state.currentIndex;
+          sessionCorrect = state.sessionCorrect;
+          sessionAttempts = state.sessionAttempts;
+          sessionAnswers = state.sessionAnswers || new Array(sessionQueue.length).fill(null);
+          
+          // Restore settings
+          if (state.settings) {
+            selectCategory.value = state.settings.category || 'all';
+            selectAlgorithm.value = state.settings.algorithm || 'sequential';
+            selectQType.value = state.settings.qtype || 'free';
+            chkOnlyDifficult.checked = !!state.settings.onlyDifficult;
+          }
+          
+          populateCategories();
+          
+          // Update details in dashboard in case they go back
+          currentModuleTitle.textContent = activeModule.name;
+          currentModuleDesc.textContent = activeModule.description || '';
+          
+          switchScreen('study');
+          loadCard(currentIndex);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to restore active session', e);
+      localStorage.removeItem('vibe_prep_active_session');
+    }
+  }
+  
+  // 3. Check for selected active module
+  const savedModuleId = localStorage.getItem('vibe_prep_active_module_id');
+  if (savedModuleId) {
+    const mod = allModules.find(m => m.id === savedModuleId);
+    if (mod) {
+      await selectModule(mod);
+      return;
+    }
+  }
+  
+  // Default: go to modules screen
+  switchScreen('modules');
+}
+
+async function loadModules() {
+  allModules = [];
+  
+  // Load standard modules from manifest
   try {
-    const response = await fetch('./fr.md');
-    if (response.ok) {
-      const text = await response.text();
-      loadQuestions(text, 'fr.md (По умолчанию)');
-    } else {
-      console.log('Default fr.md was not found at root. Waiting for user upload.');
+    const resp = await fetch('modules/modules.json');
+    if (resp.ok) {
+      const standard = await resp.json();
+      allModules.push(...standard.map(m => ({ ...m, isCustom: false })));
     }
   } catch (e) {
-    console.warn('Could not auto-fetch default fr.md. Ready for file drop.', e);
+    console.warn('Could not load standard modules manifest', e);
+  }
+  
+  // Load custom modules from localStorage
+  try {
+    const custom = localStorage.getItem('vibe_prep_custom_modules');
+    if (custom) {
+      allModules.push(...JSON.parse(custom).map(m => ({ ...m, isCustom: true })));
+    }
+  } catch (e) {
+    console.error('Failed to parse custom modules', e);
+  }
+  
+  renderModulesList();
+}
+
+function renderModulesList() {
+  modulesList.innerHTML = '';
+  
+  if (allModules.length === 0) {
+    modulesList.innerHTML = '<div style="text-align:center; padding:1.5rem; color:var(--text-muted); font-size:0.9rem;">Нет доступных тем</div>';
+    return;
+  }
+  
+  allModules.forEach(mod => {
+    const card = document.createElement('div');
+    card.className = 'module-card';
+    
+    const header = document.createElement('div');
+    header.className = 'module-card-header';
+    
+    const title = document.createElement('h3');
+    title.className = 'module-card-title';
+    title.textContent = mod.name;
+    
+    header.appendChild(title);
+    
+    if (mod.isCustom) {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-module-delete';
+      delBtn.title = 'Удалить тему';
+      delBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      `;
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent card selection
+        if (confirm(`Вы уверены, что хотите удалить тему "${mod.name}"? Все ее данные будут стерты.`)) {
+          deleteCustomModule(mod.id);
+        }
+      });
+      header.appendChild(delBtn);
+    }
+    
+    const desc = document.createElement('p');
+    desc.className = 'module-card-desc';
+    desc.textContent = mod.description || 'Без описания';
+    
+    const footer = document.createElement('div');
+    footer.className = 'module-card-footer';
+    
+    const typeLabel = document.createElement('span');
+    typeLabel.className = 'brand-badge';
+    typeLabel.style.fontSize = '0.7rem';
+    typeLabel.textContent = mod.isCustom ? 'Пользовательская' : 'Стандартная';
+    
+    footer.appendChild(typeLabel);
+    
+    card.appendChild(header);
+    card.appendChild(desc);
+    card.appendChild(footer);
+    
+    card.addEventListener('click', () => {
+      selectModule(mod);
+    });
+    
+    modulesList.appendChild(card);
+  });
+}
+
+async function selectModule(mod) {
+  activeModule = mod;
+  localStorage.setItem('vibe_prep_active_module_id', mod.id);
+  
+  // Set details in dashboard
+  currentModuleTitle.textContent = mod.name;
+  currentModuleDesc.textContent = mod.description || '';
+  
+  // Load questions
+  try {
+    let mdText = '';
+    if (mod.isCustom) {
+      mdText = mod.mdText;
+    } else {
+      const resp = await fetch(mod.file);
+      if (!resp.ok) throw new Error('Файл не найден');
+      mdText = await resp.text();
+    }
+    
+    dbQuestions = parseMarkdown(mdText);
+    dbQuestions.forEach(q => {
+      q.id = `${mod.id}_${q.id}`;
+    });
+    
+    fileLoaded = true;
+    
+    // Populate category dropdown
+    populateCategories();
+    
+    switchScreen('dashboard');
+  } catch (err) {
+    alert(`Ошибка при загрузке темы: ${err.message}`);
+    switchScreen('modules');
   }
 }
 
-function loadQuestions(mdText, filename) {
-  try {
-    dbQuestions = parseMarkdown(mdText);
-    fileLoaded = true;
-    
-    // Update dropzone UI
-    dropzoneText.textContent = `Загружен: ${filename}`;
-    importStats.style.display = 'block';
-    importedCount.textContent = dbQuestions.length;
-    
-    // Populate categories
-    const categories = new Set(dbQuestions.map(q => q.category));
-    
-    // Clear and reset select options
-    selectCategory.innerHTML = '<option value="all">Все вопросы</option>';
-    categories.forEach(cat => {
-      const opt = document.createElement('option');
-      opt.value = cat;
-      opt.textContent = cat;
-      selectCategory.appendChild(opt);
-    });
+function populateCategories() {
+  const categories = new Set(dbQuestions.map(q => q.category));
+  selectCategory.innerHTML = '<option value="all">Все вопросы</option>';
+  categories.forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat;
+    opt.textContent = cat;
+    selectCategory.appendChild(opt);
+  });
+}
 
-    // Refresh UI
-    updateGlobalStatsUI();
-  } catch (err) {
-    alert('Ошибка при разборе файла вопросов: ' + err.message);
+function deleteCustomModule(id) {
+  try {
+    const custom = localStorage.getItem('vibe_prep_custom_modules');
+    if (custom) {
+      let list = JSON.parse(custom);
+      list = list.filter(m => m.id !== id);
+      localStorage.setItem('vibe_prep_custom_modules', JSON.stringify(list));
+      
+      // If the deleted module was active, reset active module
+      if (activeModule && activeModule.id === id) {
+        activeModule = null;
+        localStorage.removeItem('vibe_prep_active_module_id');
+      }
+      
+      loadModules();
+    }
+  } catch (e) {
+    console.error('Failed to delete custom module', e);
   }
+}
+
+function handleCustomModuleFile(file) {
+  const name = inputModuleName.value.trim();
+  const desc = inputModuleDesc.value.trim();
+  
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const mdText = e.target.result;
+      const questions = parseMarkdown(mdText);
+      if (questions.length === 0) {
+        throw new Error('В файле не найдено корректных вопросов. Проверьте форматирование.');
+      }
+      
+      const newMod = {
+        id: 'custom_' + Date.now(),
+        name: name || file.name.replace(/\.md$/i, ''),
+        description: desc || 'Пользовательская тема',
+        mdText: mdText,
+        isCustom: true
+      };
+      
+      const custom = localStorage.getItem('vibe_prep_custom_modules');
+      const list = custom ? JSON.parse(custom) : [];
+      list.push(newMod);
+      localStorage.setItem('vibe_prep_custom_modules', JSON.stringify(list));
+      
+      inputModuleName.value = '';
+      inputModuleDesc.value = '';
+      moduleDropzoneText.textContent = 'Нажмите или перетащите .md файл';
+      
+      loadModules();
+      
+      alert(`Тема "${newMod.name}" успешно загружена! (Вопросов: ${questions.length})`);
+    } catch (err) {
+      alert('Ошибка при разборе файла вопросов: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
 }
 
 /* -------------------------------------------------------------
@@ -143,44 +391,58 @@ function setupEventListeners() {
   });
   
   btnShowHome.addEventListener('click', () => {
-    switchScreen('dashboard');
+    if (activeModule) {
+      switchScreen('dashboard');
+    } else {
+      switchScreen('modules');
+    }
   });
 
   document.getElementById('brand-home').addEventListener('click', () => {
-    switchScreen('dashboard');
+    if (activeModule) {
+      switchScreen('dashboard');
+    } else {
+      switchScreen('modules');
+    }
   });
 
-  // Drag and drop setup
-  fileDropzone.addEventListener('click', () => fileInput.click());
+  btnChangeModule.addEventListener('click', () => {
+    switchScreen('modules');
+  });
+
+  // Custom module file drag and drop
+  moduleDropzone.addEventListener('click', () => moduleFileInput.click());
   
-  fileInput.addEventListener('change', (e) => {
+  moduleFileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
-    if (file) handleFile(file);
+    if (file) handleCustomModuleFile(file);
   });
 
-  fileDropzone.addEventListener('dragover', (e) => {
+  moduleDropzone.addEventListener('dragover', (e) => {
     e.preventDefault();
-    fileDropzone.classList.add('dragover');
+    moduleDropzone.classList.add('dragover');
   });
 
-  fileDropzone.addEventListener('dragleave', () => {
-    fileDropzone.classList.remove('dragover');
+  moduleDropzone.addEventListener('dragleave', () => {
+    moduleDropzone.classList.remove('dragover');
   });
 
-  fileDropzone.addEventListener('drop', (e) => {
+  moduleDropzone.addEventListener('drop', (e) => {
     e.preventDefault();
-    fileDropzone.classList.remove('dragover');
+    moduleDropzone.classList.remove('dragover');
     const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
+    if (file) handleCustomModuleFile(file);
   });
 
   // Session Start / End
   btnStartSession.addEventListener('click', startStudySession);
-  btnExitStudy.addEventListener('click', () => switchScreen('dashboard'));
+  btnExitStudy.addEventListener('click', () => {
+    clearActiveSession();
+    switchScreen('dashboard');
+  });
   
   // Card interaction
   studyCard.addEventListener('click', (e) => {
-    // Prevent flipping when clicking on interactive areas or code inside back
     if (e.target.closest('button') || e.target.closest('textarea') || e.target.closest('a') || e.target.closest('.options-grid') || e.target.closest('.text-input-group')) {
       return;
     }
@@ -190,8 +452,14 @@ function setupEventListeners() {
   // Study evaluation actions
   btnCorrect.addEventListener('click', () => recordSessionProgress(true));
   btnIncorrect.addEventListener('click', () => recordSessionProgress(false));
+  btnPrevQuestion.addEventListener('click', goToPrevQuestion);
   btnDifficult.addEventListener('click', toggleCardDifficult);
   btnAcceptAlternative.addEventListener('click', acceptAlternativeAnswer);
+
+  // Export / Import progress
+  btnExportProgress.addEventListener('click', exportProgress);
+  btnImportProgressTrigger.addEventListener('click', () => importProgressInput.click());
+  importProgressInput.addEventListener('change', importProgress);
 
   // Stats
   btnResetStats.addEventListener('click', () => {
@@ -217,6 +485,7 @@ function handleFile(file) {
 }
 
 function switchScreen(screenName) {
+  screenModules.classList.remove('active');
   screenDashboard.classList.remove('active');
   screenStudy.classList.remove('active');
   screenStats.classList.remove('active');
@@ -224,7 +493,9 @@ function switchScreen(screenName) {
   btnShowHome.style.display = 'none';
   btnShowStats.style.display = 'none';
 
-  if (screenName === 'dashboard') {
+  if (screenName === 'modules') {
+    screenModules.classList.add('active');
+  } else if (screenName === 'dashboard') {
     screenDashboard.classList.add('active');
     btnShowStats.style.display = 'flex';
   } else if (screenName === 'study') {
@@ -243,16 +514,21 @@ function switchScreen(screenName) {
 
 function startStudySession() {
   if (!fileLoaded || dbQuestions.length === 0) {
-    alert('Пожалуйста, сначала загрузите или импортируйте базу вопросов (.md).');
+    alert('Пожалуйста, сначала выберите тему.');
     return;
   }
 
   const category = selectCategory.value;
   const algorithm = selectAlgorithm.value;
+  const onlyDifficult = chkOnlyDifficult.checked;
   
-  sessionQueue = prepareSession(dbQuestions, category, algorithm);
+  sessionQueue = prepareSession(dbQuestions, category, algorithm, onlyDifficult);
   if (sessionQueue.length === 0) {
-    alert('Нет вопросов, соответствующих выбранным критериям.');
+    if (onlyDifficult) {
+      alert('Нет сложных вопросов в выбранной категории.');
+    } else {
+      alert('Нет вопросов, соответствующих выбранным критериям.');
+    }
     return;
   }
 
@@ -260,14 +536,56 @@ function startStudySession() {
   currentIndex = 0;
   sessionCorrect = 0;
   sessionAttempts = 0;
+  sessionAnswers = new Array(sessionQueue.length).fill(null);
   
   switchScreen('study');
   loadCard(currentIndex);
+  saveActiveSession();
+}
+
+function saveActiveSession() {
+  if (!activeModule) return;
+  const sessionState = {
+    moduleId: activeModule.id,
+    sessionQueue,
+    currentIndex,
+    sessionCorrect,
+    sessionAttempts,
+    sessionAnswers,
+    settings: {
+      category: selectCategory.value,
+      algorithm: selectAlgorithm.value,
+      qtype: selectQType.value,
+      onlyDifficult: chkOnlyDifficult.checked
+    }
+  };
+  localStorage.setItem('vibe_prep_active_session', JSON.stringify(sessionState));
+}
+
+function clearActiveSession() {
+  localStorage.removeItem('vibe_prep_active_session');
+}
+
+function goToPrevQuestion() {
+  if (currentIndex <= 0) return;
+  
+  currentIndex--;
+  
+  const prevAnswer = sessionAnswers[currentIndex];
+  if (prevAnswer !== null) {
+    sessionAttempts--;
+    if (prevAnswer === true) {
+      sessionCorrect--;
+    }
+    sessionAnswers[currentIndex] = null;
+  }
+  
+  loadCard(currentIndex);
+  saveActiveSession();
 }
 
 function loadCard(index) {
   if (index < 0 || index >= sessionQueue.length) {
-    // End of session
     finishSession();
     return;
   }
@@ -276,22 +594,18 @@ function loadCard(index) {
   const qStats = getQuestionStats(q.id);
   const qType = selectQType.value;
 
-  // Visual reset card state
   isCardFlipped = false;
   studyCard.classList.remove('flipped');
 
-  // Populate metadata & question
   cardFrontMeta.textContent = `${q.category} • Вопрос ${q.number}`;
   cardQuestionText.textContent = q.title;
 
-  // Star badge display
   if (q.isStarred || qStats.isDifficult) {
     cardStarred.style.display = 'block';
   } else {
     cardStarred.style.display = 'none';
   }
 
-  // Set Difficult button active state
   if (qStats.isDifficult) {
     btnDifficult.classList.add('active');
     btnDifficult.querySelector('span').textContent = 'Сложный вопрос!';
@@ -300,30 +614,22 @@ function loadCard(index) {
     btnDifficult.querySelector('span').textContent = 'Пометить сложным';
   }
 
-  // Parse Markdown Answers for Card Back
-  // Render answers safely with Marked library
   cardShortAnswer.innerHTML = q.shortAnswer ? marked.parse(q.shortAnswer) : '<em>Отсутствует</em>';
   cardDetailedAnswer.innerHTML = q.detailedAnswer ? marked.parse(q.detailedAnswer) : '<em>Отсутствует</em>';
 
-  // Format code highlighting
   setTimeout(() => {
     Prism.highlightAllUnder(studyCard);
   }, 50);
 
-  // Setup mode specific panels
   setupQtypeUI(q, qType);
-
-  // Update progress elements
   updateProgressUI();
 }
 
 function setupQtypeUI(q, qType) {
-  // Hide all panels initially
   choiceContainer.style.display = 'none';
   inputContainer.style.display = 'none';
   btnAcceptAlternative.style.display = 'none';
   
-  // Enable standard buttons by default
   btnCorrect.disabled = false;
   btnIncorrect.disabled = false;
 
@@ -334,7 +640,7 @@ function setupQtypeUI(q, qType) {
     inputFeedback.style.display = 'none';
     inputFeedback.className = 'input-feedback';
     inputContainer.style.display = 'flex';
-    btnCorrect.disabled = true; // Disabled until typed evaluation completes
+    btnCorrect.disabled = true;
     btnIncorrect.disabled = true;
   }
 }
@@ -354,7 +660,6 @@ function toggleCardDifficult() {
 
   const isDiff = toggleDifficult(q.id);
   
-  // Update Star icon
   const qStats = getQuestionStats(q.id);
   if (q.isStarred || isDiff) {
     cardStarred.style.display = 'block';
@@ -362,7 +667,6 @@ function toggleCardDifficult() {
     cardStarred.style.display = 'none';
   }
 
-  // Update button visual
   if (isDiff) {
     btnDifficult.classList.add('active');
     btnDifficult.querySelector('span').textContent = 'Сложный вопрос!';
@@ -370,28 +674,30 @@ function toggleCardDifficult() {
     btnDifficult.classList.remove('active');
     btnDifficult.querySelector('span').textContent = 'Пометить сложным';
   }
+  
+  saveActiveSession();
 }
 
 function recordSessionProgress(isCorrect) {
   const q = sessionQueue[currentIndex];
   if (!q) return;
 
-  // Save to stats
   recordAnswer(q.id, isCorrect);
   
-  // Update session counters
+  sessionAnswers[currentIndex] = isCorrect;
   sessionAttempts++;
   if (isCorrect) {
     sessionCorrect++;
   }
 
-  // Go to next question
   currentIndex++;
+  saveActiveSession();
   loadCard(currentIndex);
 }
 
 function finishSession() {
   alert(`Поздравляем! Сессия завершена.\nРезультат: ${sessionCorrect} из ${sessionAttempts} правильно (${sessionAttempts > 0 ? Math.round(sessionCorrect / sessionAttempts * 100) : 0}%)`);
+  clearActiveSession();
   switchScreen('dashboard');
 }
 
@@ -737,8 +1043,66 @@ function renderStatsTable() {
 
     row.appendChild(info);
     row.appendChild(meta);
+
+    // Clicking on stats row starts study session at this question sequentially
+    row.addEventListener('click', () => {
+      sessionQueue = [...dbQuestions];
+      const qIndex = dbQuestions.indexOf(q);
+      if (qIndex === -1) return;
+
+      currentIndex = qIndex;
+      sessionCorrect = 0;
+      sessionAttempts = 0;
+      sessionAnswers = new Array(sessionQueue.length).fill(null);
+      
+      selectCategory.value = 'all';
+      selectAlgorithm.value = 'sequential';
+      chkOnlyDifficult.checked = false;
+
+      switchScreen('study');
+      loadCard(currentIndex);
+      saveActiveSession();
+    });
+
     statsList.appendChild(row);
   });
+}
+
+/* -------------------------------------------------------------
+ * 6. Keyboard Shortcuts Handler
+ * ------------------------------------------------------------- */
+
+function exportProgress() {
+  try {
+    const json = exportProgressJSON();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `vibe-prep-progress-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert('Не удалось экспортировать прогресс: ' + e.message);
+  }
+}
+
+function importProgress(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const jsonText = evt.target.result;
+      importProgressJSON(jsonText);
+      alert('Данные прогресса и тем успешно импортированы!');
+      window.location.reload();
+    } catch (err) {
+      alert('Ошибка при импорте: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
 }
 
 /* -------------------------------------------------------------
@@ -783,6 +1147,10 @@ function handleKeyboardShortcuts(e) {
       if (!btnCorrect.disabled) {
         recordSessionProgress(true);
       }
+      break;
+    case 'Backspace':
+      e.preventDefault();
+      goToPrevQuestion();
       break;
   }
 }
