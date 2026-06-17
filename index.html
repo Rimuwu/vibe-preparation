@@ -29,6 +29,16 @@
         <span class="brand-badge">PRO</span>
       </div>
       <div class="nav-buttons">
+        <button id="btn-show-lists" class="btn-icon" title="Мои наборы">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+          </svg>
+        </button>
         <button id="btn-show-stats" class="btn-icon" title="Статистика">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="20" x2="18" y2="10"></line>
@@ -83,6 +93,16 @@
           </svg>
           Создать пустую тему
         </button>
+      </div>
+    </main>
+
+    <!-- 0.5. LISTS SCREEN -->
+    <main id="screen-lists" class="screen">
+      <div class="panel">
+        <h2 style="font-size: 1.25rem; margin-bottom: 1rem; font-weight: 700;">Мои наборы вопросов</h2>
+        <div id="lists-container" class="modules-list">
+          <!-- Dynamic custom lists loaded here -->
+        </div>
       </div>
     </main>
 
@@ -441,8 +461,15 @@
           <button id="btn-viewer-export-md" class="btn-action" style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); white-space: nowrap; display: flex; align-items: center; gap: 0.25rem;">
             Экспорт в .md
           </button>
+          <button id="btn-viewer-select-mode" class="btn-action" style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--warning); border-radius: var(--radius-sm); border: 1px solid var(--warning); background: var(--warning-dark); color: var(--warning); white-space: nowrap; display: flex; align-items: center; gap: 0.25rem;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 11l3 3L22 4"></path>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+            <span>Собрать набор</span>
+          </button>
           <button id="btn-viewer-add-question" class="btn-action" style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--primary); border-radius: var(--radius-sm); border: 1px solid var(--primary); background: var(--primary-dark); color: var(--primary); white-space: nowrap; display: flex; align-items: center; gap: 0.25rem;">
-            + Добавить вопрос
+            + Вопрос
           </button>
         </div>
 
@@ -476,6 +503,17 @@
 
       <div id="viewer-questions-list" class="stats-list" style="max-height: none; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding-bottom: 1rem;">
         <!-- Collapsible cards render here -->
+      </div>
+      
+      <!-- Bottom selection mode panel -->
+      <div id="viewer-selection-panel" class="selection-panel" style="display: none;">
+        <div class="selection-panel-content">
+          <span id="viewer-selection-count">Выбрано вопросов: 0</span>
+          <div style="display: flex; gap: 0.5rem;">
+            <button id="btn-viewer-cancel-selection" class="btn-action" style="border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); font-size: 0.85rem; padding: 0.5rem 1rem;">Отмена</button>
+            <button id="btn-viewer-create-list" class="btn-primary" style="width: auto; border-radius: var(--radius-sm); font-size: 0.85rem; padding: 0.5rem 1rem;">Создать список</button>
+          </div>
+        </div>
       </div>
     </section>
 

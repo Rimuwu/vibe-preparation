@@ -248,13 +248,15 @@ export function exportProgressJSON() {
   const customModules = localStorage.getItem('vibe_prep_custom_modules') || '[]';
   const overrides = localStorage.getItem('vibe_prep_question_overrides') || '{}';
   const added = localStorage.getItem('vibe_prep_question_added') || '{}';
+  const customLists = localStorage.getItem('vibe_prep_custom_lists') || '[]';
 
   const backup = {
     version: '1.0',
     stats: stats,
     customModules: JSON.parse(customModules),
     overrides: JSON.parse(overrides),
-    added: JSON.parse(added)
+    added: JSON.parse(added),
+    customLists: JSON.parse(customLists)
   };
 
   return JSON.stringify(backup, null, 2);
@@ -287,9 +289,15 @@ export function importProgressJSON(jsonString) {
       localStorage.setItem('vibe_prep_question_added', JSON.stringify(backup.added));
     }
 
+    // Check if customLists exist
+    if (Array.isArray(backup.customLists)) {
+      localStorage.setItem('vibe_prep_custom_lists', JSON.stringify(backup.customLists));
+    }
+
     return true;
   } catch (e) {
     console.error('Import failed', e);
     throw new Error('Не удалось разобрать файл резервной копии: ' + e.message);
   }
 }
+

@@ -39,6 +39,7 @@ const screenDashboard = document.getElementById('screen-dashboard');
 const screenStudy = document.getElementById('screen-study');
 const screenStats = document.getElementById('screen-stats');
 const screenViewer = document.getElementById('screen-viewer');
+const screenLists = document.getElementById('screen-lists');
 
 const btnShowStats = document.getElementById('btn-show-stats');
 const btnShowHome = document.getElementById('btn-show-home');
@@ -102,6 +103,17 @@ const viewerQuestionsList = document.getElementById('viewer-questions-list');
 const viewerSearch = document.getElementById('viewer-search');
 const btnViewerToggleAll = document.getElementById('btn-viewer-toggle-all');
 let isAllExpanded = true;
+
+const btnShowLists = document.getElementById('btn-show-lists');
+const listsContainer = document.getElementById('lists-container');
+const btnViewerSelectMode = document.getElementById('btn-viewer-select-mode');
+const viewerSelectionPanel = document.getElementById('viewer-selection-panel');
+const viewerSelectionCount = document.getElementById('viewer-selection-count');
+const btnViewerCancelSelection = document.getElementById('btn-viewer-cancel-selection');
+const btnViewerCreateList = document.getElementById('btn-viewer-create-list');
+
+let isSelectionMode = false;
+let selectedQuestionIds = new Set();
 
 // Global Stats elements
 const statAccuracy = document.getElementById('stat-accuracy');
@@ -660,6 +672,10 @@ function handleCustomModuleFile(file) {
 
 function setupEventListeners() {
   // Navigation
+  btnShowLists.addEventListener('click', () => {
+    switchScreen('lists');
+  });
+
   btnShowStats.addEventListener('click', () => {
     switchScreen('stats');
     // Reset filters
@@ -707,6 +723,68 @@ function setupEventListeners() {
 
   btnViewerBack.addEventListener('click', () => {
     switchScreen('dashboard');
+  });
+
+  btnViewerSelectMode.addEventListener('click', () => {
+    if (!activeModule) return;
+    isSelectionMode = !isSelectionMode;
+    if (isSelectionMode) {
+      screenViewer.classList.add('select-mode-active');
+      btnViewerSelectMode.classList.add('active');
+      btnViewerSelectMode.querySelector('span').textContent = 'Отменить выбор';
+      btnViewerSelectMode.style.borderColor = 'var(--error)';
+      btnViewerSelectMode.style.background = 'var(--error-dark)';
+      btnViewerSelectMode.style.color = 'var(--error)';
+      selectedQuestionIds.clear();
+      viewerSelectionCount.textContent = 'Выбрано вопросов: 0';
+      viewerSelectionPanel.style.display = 'flex';
+      renderViewerList();
+    } else {
+      deactivateSelectionMode();
+      renderViewerList();
+    }
+  });
+
+  btnViewerCancelSelection.addEventListener('click', () => {
+    deactivateSelectionMode();
+    renderViewerList();
+  });
+
+  btnViewerCreateList.addEventListener('click', async () => {
+    if (selectedQuestionIds.size === 0) {
+      showModalAlert('Пожалуйста, выберите хотя бы один вопрос.');
+      return;
+    }
+    
+    const defaultListName = `Набор: ${activeModule.name} (${selectedQuestionIds.size} вопр.)`;
+    const listName = await showModalPrompt('Введите название для нового списка вопросов:', defaultListName, 'Новый список');
+    if (listName === null) {
+      return;
+    }
+    
+    const name = listName.trim() || defaultListName;
+    try {
+      const raw = localStorage.getItem('vibe_prep_custom_lists');
+      const lists = raw ? JSON.parse(raw) : [];
+      
+      const newList = {
+        id: 'list_' + Date.now(),
+        name: name,
+        moduleId: activeModule.id,
+        moduleName: activeModule.name,
+        questionIds: Array.from(selectedQuestionIds),
+        created: Date.now()
+      };
+      
+      lists.push(newList);
+      localStorage.setItem('vibe_prep_custom_lists', JSON.stringify(lists));
+      
+      deactivateSelectionMode();
+      showModalAlert(`Набор вопросов "${name}" успешно создан!`);
+      switchScreen('lists');
+    } catch (e) {
+      showModalAlert('Не удалось сохранить список: ' + e.message);
+    }
   });
 
   viewerSearch.addEventListener('input', renderViewerList);
@@ -897,13 +975,6 @@ function setupEventListeners() {
   document.addEventListener('keydown', handleKeyboardShortcuts);
 }
 
-function handleFile(file) {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    loadQuestions(e.target.result, file.name);
-  };
-  reader.readAsText(file);
-}
 
 function switchScreen(screenName) {
   screenModules.classList.remove('active');
@@ -1712,10 +1783,24 @@ function renderViewerList() {
     const card = document.createElement('div');
     card.className = 'viewer-card';
     card.dataset.id = q.id;
+    if (isSelectionMode && selectedQuestionIds.has(q.id)) {
+      card.classList.add('selected');
+    }
 
     // Header
     const header = document.createElement('div');
     header.className = 'viewer-card-header';
+
+    // Checkbox for selection mode
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.className = 'viewer-select-checkbox';
+    chk.checked = selectedQuestionIds.has(q.id);
+    chk.addEventListener('change', (e) => {
+      e.stopPropagation();
+      toggleQuestionSelection(q.id, chk.checked, card);
+    });
+    header.appendChild(chk);
 
     const titleGroup = document.createElement('div');
     titleGroup.className = 'viewer-card-title-group';
@@ -1894,7 +1979,15 @@ function renderViewerList() {
 
     // Toggle expand collapse
     card.addEventListener('click', (e) => {
-      if (e.target.closest('button') || e.target.closest('a') || e.target.closest('textarea')) {
+      if (e.target.closest('button') || e.target.closest('a') || e.target.closest('textarea') || e.target.closest('.viewer-select-checkbox')) {
+        return;
+      }
+      if (isSelectionMode) {
+        const checkbox = card.querySelector('.viewer-select-checkbox');
+        if (checkbox) {
+          checkbox.checked = !checkbox.checked;
+          toggleQuestionSelection(q.id, checkbox.checked, card);
+        }
         return;
       }
       const isExpanded = card.classList.toggle('expanded');
@@ -1910,4 +2003,223 @@ function renderViewerList() {
 
     viewerQuestionsList.appendChild(card);
   });
+}
+
+function deactivateSelectionMode() {
+  isSelectionMode = false;
+  selectedQuestionIds.clear();
+  if (btnViewerSelectMode) {
+    btnViewerSelectMode.classList.remove('active');
+    btnViewerSelectMode.querySelector('span').textContent = 'Собрать набор';
+    btnViewerSelectMode.style.borderColor = 'var(--warning)';
+    btnViewerSelectMode.style.background = 'var(--warning-dark)';
+    btnViewerSelectMode.style.color = 'var(--warning)';
+  }
+  if (viewerSelectionPanel) {
+    viewerSelectionPanel.style.display = 'none';
+  }
+  if (screenViewer) {
+    screenViewer.classList.remove('select-mode-active');
+  }
+}
+
+function toggleQuestionSelection(qId, isChecked, cardElement) {
+  if (isChecked) {
+    selectedQuestionIds.add(qId);
+    if (cardElement) cardElement.classList.add('selected');
+  } else {
+    selectedQuestionIds.delete(qId);
+    if (cardElement) cardElement.classList.remove('selected');
+  }
+  viewerSelectionCount.textContent = `Выбрано вопросов: ${selectedQuestionIds.size}`;
+}
+
+function showModalPrompt(message, defaultValue = '', title = 'Ввод') {
+  return new Promise((resolve) => {
+    modalTitle.textContent = title;
+    modalBody.innerHTML = `
+      <div class="form-group">
+        <label for="prompt-input">${message}</label>
+        <input type="text" id="prompt-input" class="search-input" value="${defaultValue}">
+      </div>
+    `;
+    modalBtnCancel.style.display = 'block';
+    modalBtnCancel.textContent = 'Отмена';
+    modalBtnOk.style.display = 'block';
+    modalBtnOk.textContent = 'Сохранить';
+    customModal.style.display = 'flex';
+    customModal.classList.add('active');
+
+    setTimeout(() => {
+      const input = document.getElementById('prompt-input');
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }, 100);
+
+    const cleanUp = (value) => {
+      customModal.style.display = 'none';
+      customModal.classList.remove('active');
+      modalBtnOk.removeEventListener('click', onSave);
+      modalBtnCancel.removeEventListener('click', onCancel);
+      modalClose.removeEventListener('click', onClose);
+      resolve(value);
+    };
+
+    function onSave() {
+      const val = document.getElementById('prompt-input').value.trim();
+      cleanUp(val);
+    }
+    function onCancel() {
+      cleanUp(null);
+    }
+    function onClose() {
+      cleanUp(null);
+    }
+
+    modalBtnOk.addEventListener('click', onSave);
+    modalBtnCancel.addEventListener('click', onCancel);
+    modalClose.addEventListener('click', onClose);
+  });
+}
+
+function renderListsScreen() {
+  listsContainer.innerHTML = '';
+  
+  let lists = [];
+  try {
+    const raw = localStorage.getItem('vibe_prep_custom_lists');
+    lists = raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.error('Failed to load custom lists', e);
+  }
+  
+  if (lists.length === 0) {
+    listsContainer.innerHTML = `
+      <div style="text-align:center; padding:2rem 1.5rem; color:var(--text-muted); font-size:0.95rem;">
+        У вас пока нет созданных наборов вопросов.<br>
+        Вы можете собрать их на странице просмотра вопросов темы.
+      </div>
+    `;
+    return;
+  }
+  
+  lists.forEach(list => {
+    const card = document.createElement('div');
+    card.className = 'list-card';
+    card.dataset.id = list.id;
+    
+    const header = document.createElement('div');
+    header.className = 'list-card-header';
+    
+    const titleGroup = document.createElement('div');
+    titleGroup.className = 'list-card-title-group';
+    
+    const title = document.createElement('h3');
+    title.className = 'list-card-title';
+    title.textContent = list.name;
+    
+    const subtitle = document.createElement('span');
+    subtitle.className = 'list-card-subtitle';
+    subtitle.textContent = `Тема: ${list.moduleName} • Вопросов: ${list.questionIds.length}`;
+    
+    titleGroup.appendChild(title);
+    titleGroup.appendChild(subtitle);
+    
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn-module-delete';
+    delBtn.title = 'Удалить набор';
+    delBtn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+    `;
+    delBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      if (await showModalConfirm(`Вы уверены, что хотите удалить набор "${list.name}"?`)) {
+        deleteCustomList(list.id);
+      }
+    });
+    
+    header.appendChild(titleGroup);
+    header.appendChild(delBtn);
+    
+    const actions = document.createElement('div');
+    actions.className = 'list-card-actions';
+    
+    const solveBtn = document.createElement('button');
+    solveBtn.className = 'btn-primary';
+    solveBtn.style.padding = '0.5rem 1.25rem';
+    solveBtn.style.fontSize = '0.85rem';
+    solveBtn.style.width = 'auto';
+    solveBtn.innerHTML = `
+      Решать
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+      </svg>
+    `;
+    solveBtn.addEventListener('click', () => {
+      startCustomListSession(list);
+    });
+    
+    actions.appendChild(solveBtn);
+    
+    card.appendChild(header);
+    card.appendChild(actions);
+    
+    listsContainer.appendChild(card);
+  });
+}
+
+function deleteCustomList(listId) {
+  try {
+    const raw = localStorage.getItem('vibe_prep_custom_lists');
+    let lists = raw ? JSON.parse(raw) : [];
+    lists = lists.filter(l => l.id !== listId);
+    localStorage.setItem('vibe_prep_custom_lists', JSON.stringify(lists));
+    renderListsScreen();
+  } catch (e) {
+    console.error('Failed to delete custom list', e);
+  }
+}
+
+async function startCustomListSession(list) {
+  const mod = allModules.find(m => m.id === list.moduleId);
+  if (!mod) {
+    showModalAlert('Тема, к которой относится этот набор, больше не существует.');
+    return;
+  }
+  
+  try {
+    dbQuestions = await loadQuestionsForModule(mod);
+    fileLoaded = true;
+    activeModule = mod;
+    localStorage.setItem('vibe_prep_active_module_id', mod.id);
+    populateCategories();
+    
+    const filteredQuestions = dbQuestions.filter(q => list.questionIds.includes(q.id));
+    if (filteredQuestions.length === 0) {
+      showModalAlert('В этом наборе не найдено подходящих вопросов. Возможно, они были удалены из темы.');
+      return;
+    }
+    
+    sessionQueue = filteredQuestions;
+    currentIndex = 0;
+    sessionCorrect = 0;
+    sessionAttempts = 0;
+    sessionAnswers = new Array(sessionQueue.length).fill(null);
+    
+    selectCategory.value = 'all';
+    selectAlgorithm.value = 'sequential';
+    if (selectProgressFilter) selectProgressFilter.value = 'all';
+    chkOnlyDifficult.checked = false;
+    
+    switchScreen('study');
+    loadCard(currentIndex);
+    saveActiveSession();
+  } catch (e) {
+    showModalAlert('Не удалось загрузить вопросы: ' + e.message);
+  }
 }
