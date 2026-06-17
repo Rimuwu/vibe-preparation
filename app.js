@@ -2374,13 +2374,17 @@ function generateStatsShareCard() {
   
   ctx.font = 'bold 36px Roboto, sans-serif';
   ctx.fillStyle = '#ffffff';
-  ctx.fillText('Preparation.vibe', 80, 100);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  const logoText = 'Preparation.vibe';
+  ctx.fillText(logoText, 80, 100);
+  const logoWidth = ctx.measureText(logoText).width;
   
   ctx.font = 'bold 20px Roboto, sans-serif';
   ctx.fillStyle = '#8ab4f8';
   ctx.strokeStyle = 'rgba(138, 180, 248, 0.3)';
   ctx.lineWidth = 2;
-  const badgeX = 270;
+  const badgeX = 80 + logoWidth + 15;
   const badgeY = 72;
   const badgeW = 70;
   const badgeH = 36;
