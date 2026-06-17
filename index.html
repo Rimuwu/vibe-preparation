@@ -88,15 +88,24 @@
             <h2 id="current-module-title" style="font-size: 1.2rem; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Загрузка...</h2>
             <p id="current-module-desc" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;"></p>
           </div>
-          <button id="btn-change-module" class="btn-action" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; border-color: var(--border-color); flex-shrink: 0; border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.25rem; background: transparent; color: var(--text-main);">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="16 3 21 8 16 13"></polyline>
-              <line x1="21" y1="8" x2="9" y2="8"></line>
-              <polyline points="8 21 3 16 8 11"></polyline>
-              <line x1="3" y1="16" x2="15" y2="16"></line>
-            </svg>
-            Сменить
-          </button>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem; flex-shrink: 0;">
+            <button id="btn-view-module" class="btn-action" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.25rem; background: transparent; color: var(--text-main);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              Просмотр
+            </button>
+            <button id="btn-change-module" class="btn-action" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.25rem; background: transparent; color: var(--text-main);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 3 21 8 16 13"></polyline>
+                <line x1="21" y1="8" x2="9" y2="8"></line>
+                <polyline points="8 21 3 16 8 11"></polyline>
+                <line x1="3" y1="16" x2="15" y2="16"></line>
+              </svg>
+              Сменить
+            </button>
+          </div>
         </div>
       </div>
 
@@ -344,6 +353,34 @@
         <div id="stats-list" class="stats-list">
           <!-- Dynamic stats rows loaded here -->
         </div>
+      </div>
+    </section>
+
+    <!-- 4. MODULE VIEW/PREVIEW SCREEN -->
+    <section id="screen-viewer" class="screen">
+      <div class="panel" style="margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 id="viewer-title" style="font-size: 1.25rem; font-weight: 700; margin-right: 1rem; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Просмотр темы</h2>
+          <button id="btn-viewer-back" class="btn-action" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; border-color: var(--border-color); flex-shrink: 0; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); display: flex; align-items: center; gap: 0.25rem;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Назад
+          </button>
+        </div>
+        <p id="viewer-desc" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;"></p>
+        
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+          <input type="text" id="viewer-search" class="search-input" placeholder="Поиск по вопросам..." style="flex-grow: 1;">
+          <button id="btn-viewer-toggle-all" class="btn-action" style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); white-space: nowrap; display: flex; align-items: center; gap: 0.25rem;">
+            Свернуть все
+          </button>
+        </div>
+      </div>
+
+      <div id="viewer-questions-list" class="stats-list" style="max-height: none; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding-bottom: 1rem;">
+        <!-- Collapsible cards render here -->
       </div>
     </section>
 

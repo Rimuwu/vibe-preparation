@@ -34,6 +34,7 @@ const screenModules = document.getElementById('screen-modules');
 const screenDashboard = document.getElementById('screen-dashboard');
 const screenStudy = document.getElementById('screen-study');
 const screenStats = document.getElementById('screen-stats');
+const screenViewer = document.getElementById('screen-viewer');
 
 const btnShowStats = document.getElementById('btn-show-stats');
 const btnShowHome = document.getElementById('btn-show-home');
@@ -87,6 +88,15 @@ const importProgressInput = document.getElementById('import-progress-input');
 
 const statsSearch = document.getElementById('stats-search');
 const statsList = document.getElementById('stats-list');
+
+const btnViewModule = document.getElementById('btn-view-module');
+const btnViewerBack = document.getElementById('btn-viewer-back');
+const viewerTitle = document.getElementById('viewer-title');
+const viewerDesc = document.getElementById('viewer-desc');
+const viewerQuestionsList = document.getElementById('viewer-questions-list');
+const viewerSearch = document.getElementById('viewer-search');
+const btnViewerToggleAll = document.getElementById('btn-viewer-toggle-all');
+let isAllExpanded = true;
 
 // Global Stats elements
 const statAccuracy = document.getElementById('stat-accuracy');
@@ -410,6 +420,35 @@ function setupEventListeners() {
     switchScreen('modules');
   });
 
+  btnViewModule.addEventListener('click', () => {
+    switchScreen('viewer');
+    viewerTitle.textContent = activeModule ? `Просмотр темы: ${activeModule.name}` : 'Просмотр темы';
+    viewerDesc.textContent = activeModule ? (activeModule.description || '') : '';
+    viewerSearch.value = '';
+    isAllExpanded = true;
+    btnViewerToggleAll.textContent = 'Свернуть все';
+    renderViewerList();
+  });
+
+  btnViewerBack.addEventListener('click', () => {
+    switchScreen('dashboard');
+  });
+
+  viewerSearch.addEventListener('input', renderViewerList);
+
+  btnViewerToggleAll.addEventListener('click', () => {
+    isAllExpanded = !isAllExpanded;
+    btnViewerToggleAll.textContent = isAllExpanded ? 'Свернуть все' : 'Развернуть все';
+    
+    const cards = viewerQuestionsList.querySelectorAll('.viewer-card');
+    cards.forEach(card => {
+      const isExpanded = card.classList.contains('expanded');
+      if (isAllExpanded !== isExpanded) {
+        card.click();
+      }
+    });
+  });
+
   // Custom module file drag and drop
   moduleDropzone.addEventListener('click', () => moduleFileInput.click());
   
@@ -489,6 +528,7 @@ function switchScreen(screenName) {
   screenDashboard.classList.remove('active');
   screenStudy.classList.remove('active');
   screenStats.classList.remove('active');
+  screenViewer.classList.remove('active');
   
   btnShowHome.style.display = 'none';
   btnShowStats.style.display = 'none';
@@ -505,6 +545,9 @@ function switchScreen(screenName) {
     screenStats.classList.add('active');
     btnShowHome.style.display = 'flex';
     updateGlobalStatsUI();
+  } else if (screenName === 'viewer') {
+    screenViewer.classList.add('active');
+    btnShowHome.style.display = 'flex';
   }
 }
 
@@ -1153,4 +1196,195 @@ function handleKeyboardShortcuts(e) {
       goToPrevQuestion();
       break;
   }
+}
+
+function renderViewerList() {
+  viewerQuestionsList.innerHTML = '';
+  const query = viewerSearch.value.toLowerCase().trim();
+  const stats = getStats();
+
+  const filtered = dbQuestions.filter(q => {
+    return q.title.toLowerCase().includes(query) || q.category.toLowerCase().includes(query);
+  });
+
+  if (filtered.length === 0) {
+    viewerQuestionsList.innerHTML = '<div style="text-align:center; padding:1.5rem; color:var(--text-muted);">Ничего не найдено</div>';
+    return;
+  }
+
+  filtered.forEach(q => {
+    const qStats = getQuestionStats(q.id);
+    const total = qStats.correctCount + qStats.incorrectCount;
+    const accuracy = total > 0 ? Math.round((qStats.correctCount / total) * 100) : null;
+
+    const card = document.createElement('div');
+    card.className = 'viewer-card';
+    card.dataset.id = q.id;
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'viewer-card-header';
+
+    const titleGroup = document.createElement('div');
+    titleGroup.className = 'viewer-card-title-group';
+
+    const categoryBadge = document.createElement('span');
+    categoryBadge.className = 'brand-badge';
+    categoryBadge.style.fontSize = '0.7rem';
+    categoryBadge.style.marginBottom = '0.35rem';
+    categoryBadge.style.display = 'inline-block';
+    categoryBadge.textContent = q.category;
+
+    const title = document.createElement('h3');
+    title.className = 'viewer-card-title';
+    title.textContent = `${q.number}. ${q.title}`;
+
+    titleGroup.appendChild(categoryBadge);
+    titleGroup.appendChild(title);
+
+    const meta = document.createElement('div');
+    meta.className = 'viewer-card-meta';
+
+    // Accuracy badge
+    const accuracyBadge = document.createElement('span');
+    if (accuracy !== null) {
+      accuracyBadge.className = `badge-stat ${accuracy >= 70 ? 'correct' : (accuracy >= 40 ? 'warning' : 'incorrect')}`;
+      accuracyBadge.textContent = `${accuracy}% (${qStats.correctCount}/${total})`;
+    } else {
+      accuracyBadge.className = 'badge-stat neutral';
+      accuracyBadge.textContent = 'Нет попыток';
+    }
+
+    // Difficulty star toggle button
+    const starBtn = document.createElement('button');
+    starBtn.className = `viewer-star-btn ${qStats.isDifficult || q.isStarred ? 'active' : ''}`;
+    starBtn.title = qStats.isDifficult || q.isStarred ? 'Сложный вопрос!' : 'Пометить сложным';
+    starBtn.innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="${qStats.isDifficult || q.isStarred ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+      </svg>
+    `;
+
+    starBtn.addEventListener('click', (e) => {
+      e.stopPropagation(); // prevent card toggling
+      const isDiff = toggleDifficult(q.id);
+      qStats.isDifficult = isDiff;
+      
+      // Update star button state
+      starBtn.className = `viewer-star-btn ${isDiff || q.isStarred ? 'active' : ''}`;
+      starBtn.title = isDiff || q.isStarred ? 'Сложный вопрос!' : 'Пометить сложным';
+      const svg = starBtn.querySelector('svg');
+      if (svg) {
+        svg.setAttribute('fill', isDiff || q.isStarred ? 'currentColor' : 'none');
+      }
+      
+      // Update global stats UI
+      updateGlobalStatsUI();
+    });
+
+    // Expand/Collapse Chevron icon
+    const toggleIcon = document.createElement('div');
+    toggleIcon.className = 'viewer-card-toggle-icon';
+    toggleIcon.innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9"></polyline>
+      </svg>
+    `;
+
+    meta.appendChild(accuracyBadge);
+    meta.appendChild(starBtn);
+    meta.appendChild(toggleIcon);
+
+    header.appendChild(titleGroup);
+    header.appendChild(meta);
+
+    // Body
+    const body = document.createElement('div');
+    body.className = 'viewer-card-body';
+    
+    const bodySection = document.createElement('div');
+    bodySection.className = 'viewer-card-body-section';
+
+    // Flag to track if markdown is parsed for this card
+    let isParsed = false;
+
+    const parseAndRenderContent = () => {
+      if (isParsed) return;
+      isParsed = true;
+      bodySection.innerHTML = '';
+
+      // Short Answer
+      const shortSec = document.createElement('div');
+      shortSec.innerHTML = `<h4 style="font-size: 0.75rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-color); padding-bottom: 0.25rem; margin-bottom: 0.5rem;">Краткий ответ / Код</h4>`;
+      const shortText = document.createElement('div');
+      shortText.className = 'answer-text markdown-body';
+      shortText.innerHTML = q.shortAnswer ? marked.parse(q.shortAnswer) : '<em>Отсутствует</em>';
+      shortSec.appendChild(shortText);
+      bodySection.appendChild(shortSec);
+
+      // Detailed Answer
+      if (q.detailedAnswer) {
+        const detailedSec = document.createElement('div');
+        detailedSec.innerHTML = `<h4 style="font-size: 0.75rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-color); padding-bottom: 0.25rem; margin-bottom: 0.5rem; margin-top: 0.75rem;">Подробное пояснение</h4>`;
+        const detailedText = document.createElement('div');
+        detailedText.className = 'answer-text markdown-body';
+        detailedText.innerHTML = marked.parse(q.detailedAnswer);
+        detailedSec.appendChild(detailedText);
+        bodySection.appendChild(detailedSec);
+      }
+
+      // If it's a multiple choice question, list the choices
+      if (q.type === 'choice' && q.choices && q.choices.length > 0) {
+        const choiceSec = document.createElement('div');
+        choiceSec.innerHTML = `<h4 style="font-size: 0.75rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-color); padding-bottom: 0.25rem; margin-bottom: 0.5rem; margin-top: 0.75rem;">Варианты ответа</h4>`;
+        const choiceList = document.createElement('ul');
+        choiceList.style.listStyleType = 'none';
+        choiceList.style.paddingLeft = '0';
+        choiceList.style.display = 'flex';
+        choiceList.style.flexDirection = 'column';
+        choiceList.style.gap = '0.35rem';
+        q.choices.forEach(c => {
+          const item = document.createElement('li');
+          item.style.display = 'flex';
+          item.style.alignItems = 'center';
+          item.style.gap = '0.5rem';
+          item.style.fontSize = '0.9rem';
+          item.innerHTML = `
+            <span style="color: ${c.isCorrect ? 'var(--success)' : 'var(--error)'}; font-weight: bold;">
+              ${c.isCorrect ? '✓' : '✗'}
+            </span>
+            <span style="color: ${c.isCorrect ? '#ffffff' : 'var(--text-muted)'};">
+              ${c.text}
+            </span>
+          `;
+          choiceList.appendChild(item);
+        });
+        choiceSec.appendChild(choiceList);
+        bodySection.appendChild(choiceSec);
+      }
+
+      // Highlight syntax inside this card
+      Prism.highlightAllUnder(bodySection);
+    };
+
+    body.appendChild(bodySection);
+
+    card.appendChild(header);
+    card.appendChild(body);
+
+    // Toggle expand collapse
+    card.addEventListener('click', () => {
+      const isExpanded = card.classList.toggle('expanded');
+      if (isExpanded) {
+        parseAndRenderContent();
+      }
+    });
+
+    if (isAllExpanded) {
+      card.classList.add('expanded');
+      parseAndRenderContent();
+    }
+
+    viewerQuestionsList.appendChild(card);
+  });
 }
