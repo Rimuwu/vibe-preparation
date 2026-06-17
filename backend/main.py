@@ -70,6 +70,13 @@ def generate_sync_code() -> str:
     part2 = "".join(random.choices(chars, k=16))
     return f"VIBE-{part1}-{part2}"
 
+@app.get("/")
+def health_check():
+    return {
+        "status": "ok",
+        "detail": "meow from AS1AW!"
+    }
+
 @app.get("/api/health")
 def health_check():
     db_status = "disconnected"
