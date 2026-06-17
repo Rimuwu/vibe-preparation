@@ -9,7 +9,7 @@ window.addEventListener('error', (e) => {
 });
 // Override localStorage.setItem to auto-track local changes
 const originalSetItem = localStorage.setItem;
-localStorage.setItem = function(key, value) {
+localStorage.setItem = function (key, value) {
   try {
     originalSetItem.apply(this, arguments);
     if (key.startsWith('vibe_prep_') && key !== 'vibe_prep_sync_timestamp' && key !== 'vibe_prep_sync_code' && key !== 'vibe_prep_nickname') {
@@ -780,9 +780,9 @@ function setupEventListeners() {
   });
 
   document.getElementById('brand-home').addEventListener('click', () => {
-    const isMainScreen = (screenModules && screenModules.classList.contains('active')) || 
-                         (screenDashboard && screenDashboard.classList.contains('active'));
-    
+    const isMainScreen = (screenModules && screenModules.classList.contains('active')) ||
+      (screenDashboard && screenDashboard.classList.contains('active'));
+
     if (isMainScreen) {
       window.open('https://github.com/Rimuwu/vibe-preparation', '_blank');
     } else {
@@ -1038,11 +1038,11 @@ function setupEventListeners() {
       if (updated) {
         Object.assign(q, updated);
         saveQuestionEdit(activeModule.id, q.id, updated);
-        
+
         if (activeModule.isCustom) {
           updateCustomModuleMd(activeModule.id);
         }
-        
+
         loadCard(currentIndex);
         showModalAlert('Вопрос успешно сохранен!');
       }
@@ -1150,7 +1150,7 @@ function setupEventListeners() {
         return;
       }
       localStorage.setItem('vibe_prep_nickname', nickname);
-      
+
       // Upload stats for the nickname immediately
       showModalAlert('Никнейм сохранен. Идет загрузка статистики в таблицу лидеров...', 'Успех');
       await pushLeaderboardStats();
@@ -1173,12 +1173,12 @@ function setupEventListeners() {
             body: JSON.stringify(payload)
           });
           if (!res.ok) throw new Error('Ошибка связи с сервером');
-          
+
           const result = await res.json();
           localStorage.setItem('vibe_prep_sync_code', result.code);
           const timestamp = new Date(result.updatedAt).getTime();
           localStorage.setItem('vibe_prep_sync_timestamp', timestamp.toString());
-          
+
           showModalAlert(`Синхронизация успешно создана!\n\nВаш код: ${result.code}\n\nВведите этот код на другом устройстве для переноса данных.`, 'Успех');
           updateSyncBadgeUI(true, result.code);
         } catch (e) {
@@ -1208,15 +1208,15 @@ function setupEventListeners() {
             return;
           }
           if (!res.ok) throw new Error('Ошибка связи с сервером');
-          
+
           const serverData = await res.json();
           importProgressJSON(JSON.stringify(serverData.data));
           localStorage.setItem('vibe_prep_sync_code', cleanCode);
           const timestamp = new Date(serverData.updatedAt).getTime();
           localStorage.setItem('vibe_prep_sync_timestamp', timestamp.toString());
-          
+
           showModalAlert('Данные успешно импортированы и устройства связаны!', 'Успех');
-          
+
           // Reload view data
           loadModules();
           updateGlobalStatsUI();
@@ -1241,7 +1241,7 @@ function setupEventListeners() {
       if (syncStatusBadge) {
         syncStatusBadge.textContent = 'Синхронизация...';
       }
-      
+
       const syncCode = localStorage.getItem('vibe_prep_sync_code');
       if (!syncCode) return;
 
@@ -1283,20 +1283,20 @@ function setupEventListeners() {
               body: JSON.stringify(payload)
             });
             if (!uploadRes.ok) throw new Error('Не удалось выгрузить данные на сервер');
-            
+
             const uploadData = await uploadRes.json();
             const newServerTimestamp = new Date(uploadData.updatedAt).getTime();
             localStorage.setItem('vibe_prep_sync_timestamp', newServerTimestamp.toString());
             showModalAlert('Данные успешно выгружены в облако!', 'Успех');
           }
         }
-        
+
         // Also upload stats to leaderboard
         await pushLeaderboardStats();
         if (leaderboardModuleSelect && leaderboardModuleSelect.value) {
           loadLeaderboard(leaderboardModuleSelect.value);
         }
-        
+
         updateSyncBadgeUI(true, syncCode);
       } catch (e) {
         showModalAlert('Ошибка во время синхронизации: ' + e.message);
@@ -2934,7 +2934,24 @@ let API_URL = '';
 async function getApiUrl() {
   if (API_URL) return API_URL;
 
-  // 1. Try to fetch from .env
+  // 1. Try to read from environment variables directly (injected by actions/bundlers)
+  try {
+    if (typeof process !== 'undefined' && process.env && process.env.API_URL) {
+      API_URL = process.env.API_URL;
+      console.log('[Preparation.vibe] API_URL loaded from process.env:', API_URL);
+      return API_URL;
+    }
+  } catch (e) {}
+
+  try {
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.API_URL) {
+      API_URL = import.meta.env.API_URL;
+      console.log('[Preparation.vibe] API_URL loaded from import.meta.env:', API_URL);
+      return API_URL;
+    }
+  } catch (e) {}
+
+  // 2. Try to fetch from .env (local dev fallback)
   try {
     const resp = await fetch('.env');
     if (resp.ok) {
@@ -2947,10 +2964,10 @@ async function getApiUrl() {
       }
     }
   } catch (e) {
-    console.warn('[Preparation.vibe] Failed to fetch .env, using defaults', e);
+    // ignore
   }
 
-  // 2. Fallbacks
+  // 3. Fallbacks
   const hostname = window.location.hostname;
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
     API_URL = 'http://localhost:8000';
@@ -3005,7 +3022,7 @@ async function loadLeaderboard(moduleId) {
     const baseUrl = await getApiUrl();
     const res = await fetch(`${baseUrl}/api/leaderboard/${moduleId}`);
     if (!res.ok) throw new Error('Не удалось загрузить таблицу лидеров с сервера');
-    
+
     const entries = await res.json();
     leaderboardEmpty.style.display = 'none';
 
@@ -3113,7 +3130,7 @@ async function syncProgressWithCloud() {
   try {
     const baseUrl = await getApiUrl();
     const res = await fetchWithTimeout(`${baseUrl}/api/sync/${syncCode}`, { timeout: 3000 });
-    
+
     if (res.status === 404) {
       console.warn('[Preparation.vibe] Sync code not found on server. Disconnecting.');
       disconnectSyncSilently();
@@ -3124,7 +3141,7 @@ async function syncProgressWithCloud() {
 
     const serverData = await res.json();
     const serverTimestamp = new Date(serverData.updatedAt).getTime();
-    
+
     const localTimestampStr = localStorage.getItem('vibe_prep_sync_timestamp');
     const localTimestamp = localTimestampStr ? parseInt(localTimestampStr, 10) : 0;
 
@@ -3134,7 +3151,7 @@ async function syncProgressWithCloud() {
       importProgressJSON(JSON.stringify(serverData.data));
       // Save server timestamp via original setItem to avoid infinite change loops
       originalSetItem.call(localStorage, 'vibe_prep_sync_timestamp', serverTimestamp.toString());
-      
+
       // Reload current screen if it displays modules or stats
       if (screenModules && screenModules.classList.contains('active')) {
         loadModules();
@@ -3145,7 +3162,7 @@ async function syncProgressWithCloud() {
         dbQuestions = await loadQuestionsForModule(activeModule);
         populateCategories();
       }
-      
+
       console.log('[Preparation.vibe] Cloud data downloaded successfully.');
     } else if (localTimestamp > serverTimestamp) {
       // Local is newer -> Push/Upload to cloud
@@ -3158,7 +3175,7 @@ async function syncProgressWithCloud() {
         timeout: 3500
       });
       if (!uploadRes.ok) throw new Error('Не удалось загрузить данные на сервер');
-      
+
       const uploadData = await uploadRes.json();
       const newServerTimestamp = new Date(uploadData.updatedAt).getTime();
       originalSetItem.call(localStorage, 'vibe_prep_sync_timestamp', newServerTimestamp.toString());
@@ -3198,7 +3215,7 @@ async function renderLeaderboardScreen() {
   if (leaderboardModuleSelect) {
     leaderboardModuleSelect.innerHTML = '';
     const standardModules = allModules.filter(m => !m.isCustom);
-    
+
     if (standardModules.length === 0) {
       const opt = document.createElement('option');
       opt.value = '';
@@ -3256,7 +3273,7 @@ function updateSyncBadgeUI(isSynced, syncCode = '', isOffline = false) {
       syncStatusBadge.style.borderColor = 'rgba(129, 201, 149, 0.3)';
       syncStatusBadge.style.background = 'var(--success-dark)';
     }
-    
+
     if (syncSetupActions) syncSetupActions.style.display = 'none';
     if (syncConnectedActions) syncConnectedActions.style.display = 'flex';
     if (syncCodeDisplay) syncCodeDisplay.textContent = syncCode;
