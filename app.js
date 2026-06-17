@@ -1105,6 +1105,16 @@ function setupEventListeners() {
 function switchScreen(screenName) {
   console.log(`[Preparation.vibe] switchScreen: switching to "${screenName}"`);
 
+  const brandHome = document.getElementById('brand-home');
+  if (brandHome) {
+    const isMainScreen = (screenName === 'modules' || screenName === 'dashboard');
+    if (isMainScreen) {
+      brandHome.classList.add('repo-link-active');
+    } else {
+      brandHome.classList.remove('repo-link-active');
+    }
+  }
+
   // Clear study session when navigating away from the study screen
   if (screenStudy && screenStudy.classList.contains('active') && screenName !== 'study') {
     clearActiveSession();
