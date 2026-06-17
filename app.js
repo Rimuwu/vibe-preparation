@@ -1149,13 +1149,25 @@ function setupEventListeners() {
         showModalAlert('Пожалуйста, введите никнейм.');
         return;
       }
-      localStorage.setItem('vibe_prep_nickname', nickname);
 
-      // Upload stats for the nickname immediately
-      showModalAlert('Никнейм сохранен. Идет загрузка статистики в таблицу лидеров...', 'Успех');
-      await pushLeaderboardStats();
-      if (leaderboardModuleSelect && leaderboardModuleSelect.value) {
-        loadLeaderboard(leaderboardModuleSelect.value);
+      const btnText = btnSaveNickname.textContent;
+      btnSaveNickname.textContent = 'Сохранение...';
+      btnSaveNickname.disabled = true;
+
+      try {
+        const res = await submitLeaderboardStats(nickname);
+        if (res.success) {
+          localStorage.setItem('vibe_prep_nickname', nickname);
+          showModalAlert('Никнейм успешно сохранен и статистика отправлена в таблицу лидеров!', 'Успех');
+          if (leaderboardModuleSelect && leaderboardModuleSelect.value) {
+            loadLeaderboard(leaderboardModuleSelect.value);
+          }
+        } else {
+          showModalAlert('Не удалось сохранить никнейм:\n\n' + res.error, 'Ошибка');
+        }
+      } finally {
+        btnSaveNickname.textContent = btnText;
+        btnSaveNickname.disabled = false;
       }
     });
   }
@@ -3055,17 +3067,52 @@ async function loadLeaderboard(moduleId) {
   }
 }
 
-// Push local stats for standard modules to the leaderboard
-async function pushLeaderboardStats() {
-  const nickname = localStorage.getItem('vibe_prep_nickname');
-  if (!nickname) return; // User hasn't set a nickname yet
+// Get persistent unique local device ID
+function getOrCreateDeviceId() {
+  let deviceId = localStorage.getItem('vibe_prep_device_id');
+  if (!deviceId) {
+    deviceId = 'DEV-' + Math.random().toString(36).substr(2, 9).toUpperCase() + '-' + Date.now();
+    originalSetItem.call(localStorage, 'vibe_prep_device_id', deviceId);
+  }
+  return deviceId;
+}
 
-  // Only standard modules participate in leaderboards
+// Upload stats for a specific nickname (returns success and error details)
+async function submitLeaderboardStats(nickname) {
   const standardModules = allModules.filter(m => !m.isCustom);
-  if (standardModules.length === 0) return;
+  if (standardModules.length === 0) return { success: true };
 
   const baseUrl = await getApiUrl();
+  let syncCode = localStorage.getItem('vibe_prep_sync_code');
 
+  // If no sync code exists, automatically generate one for the user so they can join the leaderboard!
+  if (!syncCode) {
+    try {
+      const payload = { data: JSON.parse(exportProgressJSON()) };
+      const res = await fetch(`${baseUrl}/api/sync/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const result = await res.json();
+        syncCode = result.code;
+        localStorage.setItem('vibe_prep_sync_code', syncCode);
+        const timestamp = new Date(result.updatedAt).getTime();
+        localStorage.setItem('vibe_prep_sync_timestamp', timestamp.toString());
+        updateSyncBadgeUI(true, syncCode);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        const detail = errData.detail || 'Неизвестная ошибка';
+        return { success: false, error: `Для сохранения никнейма требуется синхронизация.\nОшибка создания кода: ${detail}` };
+      }
+    } catch (e) {
+      return { success: false, error: 'Для сохранения никнейма требуется синхронизация, но сервер недоступен.' };
+    }
+  }
+
+  const profileId = syncCode;
+  let errors = [];
   for (const mod of standardModules) {
     try {
       // 1. Get questions for module
@@ -3081,21 +3128,37 @@ async function pushLeaderboardStats() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          profileId: profileId,
           nickname: nickname,
           moduleId: mod.id,
           completedCount: stats.answeredCount,
           totalCount: stats.totalQuestions,
           accuracy: stats.accuracy
         }),
-        timeout: 3000
+        timeout: 4000
       });
-      if (res.ok) {
-        console.log(`[Preparation.vibe] Leaderboard stats uploaded for module: ${mod.id}`);
+      
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        const detail = errData.detail || 'Неизвестная ошибка сервера';
+        errors.push(`${mod.name}: ${detail}`);
       }
     } catch (e) {
-      console.warn(`[Preparation.vibe] Failed to upload leaderboard for module: ${mod.id}`, e);
+      errors.push(`${mod.name}: Нет соединения с сервером`);
     }
   }
+  
+  if (errors.length > 0) {
+    return { success: false, error: errors.join('\n') };
+  }
+  return { success: true };
+}
+
+// Push local stats for standard modules to the leaderboard (background runner)
+async function pushLeaderboardStats() {
+  const nickname = localStorage.getItem('vibe_prep_nickname');
+  if (!nickname) return; // User hasn't set a nickname yet
+  await submitLeaderboardStats(nickname);
 }
 
 // Sync backup data based on timestamps (smart automatic sync)

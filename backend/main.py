@@ -1,9 +1,10 @@
 import os
 import random
 import string
+import hashlib
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from pymongo import MongoClient
@@ -27,41 +28,63 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Connect to MongoDB
+# MongoDB connection — lazy initialization to prevent cold-start timeouts on Vercel
 MONGODB_URI = os.getenv(
-    "MONGODB_URI", 
+    "MONGODB_URI",
     "NOCODE"
 )
 
-print(f"Attempting to connect to MongoDB at: {MONGODB_URI}")
+_client = None
+_db = None
 
-# Handle DB connection gracefully
-try:
-    client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
-    # Parse DB name from URI or default to 'vibe_prep'
-    db_name = "vibe_prep"
-    if "/" in MONGODB_URI.split("://")[-1]:
-        path_part = MONGODB_URI.split("://")[-1].split("/")[-1]
-        if path_part:
-            db_name = path_part.split("?")[0] or "vibe_prep"
-    db = client[db_name]
-    # Check connection
-    client.server_info()
-    print(f"Connected to MongoDB database: {db_name}")
-except Exception as e:
-    print(f"Error: Failed to connect to MongoDB: {e}")
-    db = None
+def get_db():
+    """Lazily connect to MongoDB on first use. Returns db or None on failure."""
+    global _client, _db
+    if _db is not None:
+        return _db
+    try:
+        _client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+        db_name = "vibe_prep"
+        if "/" in MONGODB_URI.split("://")[-1]:
+            path_part = MONGODB_URI.split("://")[-1].split("/")[-1]
+            if path_part:
+                db_name = path_part.split("?")[0] or "vibe_prep"
+        _db = _client[db_name]
+        _client.server_info()
+        print(f"[MongoDB] Connected to database: {db_name}")
+        try:
+            _db.leaderboard.create_index([("profileId", 1), ("moduleId", 1)], unique=True)
+            print("[MongoDB] Unique index on (profileId, moduleId) verified/created.")
+        except Exception as idx_err:
+            print(f"[MongoDB] Warning: could not create index: {idx_err}")
+        return _db
+    except Exception as e:
+        print(f"[MongoDB] Connection failed: {e}")
+        _db = None
+        return None
 
 # Pydantic Models for Validation
 class SyncDataPayload(BaseModel):
     data: Dict[str, Any]
 
 class LeaderboardPayload(BaseModel):
+    profileId: str
     nickname: str
     moduleId: str
     completedCount: int
     totalCount: int
     accuracy: float
+
+def get_client_fingerprint(request: Request) -> str:
+    x_forwarded_for = request.headers.get("x-forwarded-for", "")
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(",")[0].strip()
+    else:
+        ip = request.client.host if request.client else "unknown-ip"
+        
+    user_agent = request.headers.get("user-agent", "")
+    raw_str = f"{ip}|{user_agent}"
+    return hashlib.sha256(raw_str.encode("utf-8")).hexdigest()
 
 def generate_sync_code() -> str:
     # Generates a code format like VIBE-ABCD-1234
@@ -80,12 +103,13 @@ def health_check():
 @app.get("/api/health")
 def health_check():
     db_status = "disconnected"
+    db = get_db()
     if db is not None:
         try:
-            client.server_info()
+            _client.server_info()
             db_status = "connected"
         except Exception:
-            pass
+            db_status = "error"
     return {
         "status": "ok",
         "database": db_status,
@@ -93,11 +117,23 @@ def health_check():
     }
 
 @app.post("/api/sync/create")
-def create_sync(payload: SyncDataPayload):
+def create_sync(payload: SyncDataPayload, request: Request):
+    db = get_db()
     if db is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Database connection is currently unavailable"
+        )
+    
+    fingerprint = get_client_fingerprint(request)
+    
+    # Check if the number of sync codes created by this fingerprint exceeds the limit
+    MAX_SYNC_CODES_PER_FINGERPRINT = 2
+    existing_sync_codes_count = db.sync_data.count_documents({"fingerprint": fingerprint})
+    if existing_sync_codes_count >= MAX_SYNC_CODES_PER_FINGERPRINT:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Превышен лимит кодов синхронизации для вашего устройства (максимум 2)"
         )
     
     # Try up to 10 times to generate a unique code
@@ -118,6 +154,7 @@ def create_sync(payload: SyncDataPayload):
     db.sync_data.insert_one({
         "code": code,
         "data": payload.data,
+        "fingerprint": fingerprint,
         "updatedAt": now
     })
     
@@ -128,6 +165,7 @@ def create_sync(payload: SyncDataPayload):
 
 @app.get("/api/sync/{code}")
 def get_sync(code: str):
+    db = get_db()
     if db is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -148,6 +186,7 @@ def get_sync(code: str):
 
 @app.post("/api/sync/{code}")
 def update_sync(code: str, payload: SyncDataPayload):
+    db = get_db()
     if db is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -174,32 +213,88 @@ def update_sync(code: str, payload: SyncDataPayload):
     }
 
 @app.post("/api/leaderboard")
-def update_leaderboard(payload: LeaderboardPayload):
+def update_leaderboard(payload: LeaderboardPayload, request: Request):
+    db = get_db()
     if db is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Database connection is currently unavailable"
         )
     
-    # We clean up username to make sure it's valid
+    # 1. Clean and validate inputs
     clean_nickname = payload.nickname.strip()
     if not clean_nickname:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Nickname cannot be empty"
         )
+        
+    clean_profile_id = payload.profileId.strip()
+    if not clean_profile_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Profile ID cannot be empty"
+        )
 
+    # Validate that profileId is a VALID sync code from the sync_data collection
+    sync_doc = db.sync_data.find_one({"code": clean_profile_id})
+    if sync_doc is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Для участия в таблице лидеров необходимо включить синхронизацию и использовать действительный код."
+        )
+
+    fingerprint = get_client_fingerprint(request)
     now = datetime.utcnow()
-    # Upsert the entry based on nickname & moduleId
+
+    # 2. Prevent impersonation / name hijacking
+    existing_name_owner = db.leaderboard.find_one({
+        "moduleId": payload.moduleId,
+        "nickname": clean_nickname
+    })
+    if existing_name_owner and existing_name_owner.get("profileId") != clean_profile_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Этот никнейм уже занят другим пользователем"
+        )
+
+    # 3. Check account limits by browser fingerprint (User-Agent + IP)
+    existing_entry = db.leaderboard.find_one({
+        "profileId": clean_profile_id,
+        "moduleId": payload.moduleId
+    })
+
+    if existing_entry is None:
+        # Registering a NEW profile in the leaderboard for this module
+        existing_profiles = db.leaderboard.distinct(
+            "profileId", 
+            {
+                "fingerprint": fingerprint, 
+                "moduleId": payload.moduleId
+            }
+        )
+        existing_profiles_count = len(existing_profiles)
+        
+        # Max 2 unique profiles per IP+User-Agent to protect from spamming
+        MAX_PROFILES_PER_FINGERPRINT = 2
+        if existing_profiles_count >= MAX_PROFILES_PER_FINGERPRINT:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Превышен лимит учетных записей для вашего устройства"
+            )
+
+    # 4. Upsert entry based on (profileId, moduleId)
     db.leaderboard.update_one(
         {
-            "nickname": clean_nickname,
+            "profileId": clean_profile_id,
             "moduleId": payload.moduleId
         },
         {"$set": {
+            "nickname": clean_nickname,
             "completedCount": payload.completedCount,
             "totalCount": payload.totalCount,
             "accuracy": payload.accuracy,
+            "fingerprint": fingerprint,
             "updatedAt": now
         }},
         upsert=True
@@ -209,6 +304,7 @@ def update_leaderboard(payload: LeaderboardPayload):
 
 @app.get("/api/leaderboard/{module_id}")
 def get_leaderboard(module_id: str):
+    db = get_db()
     if db is None:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
