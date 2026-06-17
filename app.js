@@ -2934,47 +2934,32 @@ let API_URL = '';
 async function getApiUrl() {
   if (API_URL) return API_URL;
 
-  // 1. Try to read from environment variables directly (injected by actions/bundlers)
-  try {
-    if (typeof process !== 'undefined' && process.env && process.env.API_URL) {
-      API_URL = process.env.API_URL;
-      console.log('[Preparation.vibe] API_URL loaded from process.env:', API_URL);
-      return API_URL;
-    }
-  } catch (e) {}
+  // 1. Local development fallback (auto-detect localhost)
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    API_URL = 'http://localhost:8000';
+    console.log('[Preparation.vibe] API_URL resolved to local dev server:', API_URL);
+    return API_URL;
+  }
 
+  // 2. Try to fetch from config.json (committed to git)
   try {
-    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.API_URL) {
-      API_URL = import.meta.env.API_URL;
-      console.log('[Preparation.vibe] API_URL loaded from import.meta.env:', API_URL);
-      return API_URL;
-    }
-  } catch (e) {}
-
-  // 2. Try to fetch from .env (local dev fallback)
-  try {
-    const resp = await fetch('.env');
+    const resp = await fetch('config.json');
     if (resp.ok) {
-      const text = await resp.text();
-      const match = text.match(/^API_URL\s*=\s*(.*)$/m);
-      if (match && match[1]) {
-        API_URL = match[1].trim().replace(/^['"]|['"]$/g, '');
-        console.log('[Preparation.vibe] API_URL loaded from .env:', API_URL);
+      const config = await resp.json();
+      if (config.API_URL) {
+        API_URL = config.API_URL;
+        console.log('[Preparation.vibe] API_URL loaded from config.json:', API_URL);
         return API_URL;
       }
     }
   } catch (e) {
-    // ignore
+    console.warn('[Preparation.vibe] Failed to fetch config.json, using hardcoded fallback');
   }
 
-  // 3. Fallbacks
-  const hostname = window.location.hostname;
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    API_URL = 'http://localhost:8000';
-  } else {
-    API_URL = window.location.origin;
-  }
-  console.log('[Preparation.vibe] API_URL resolved to:', API_URL);
+  // 3. Fallback (hardcoded production API URL)
+  API_URL = 'https://vibe-preparation-eight.vercel.app';
+  console.log('[Preparation.vibe] API_URL resolved to fallback production:', API_URL);
   return API_URL;
 }
 
