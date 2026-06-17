@@ -565,6 +565,24 @@ header {
   border: 1px solid transparent;
 }
 
+@media (max-width: 480px) {
+  .panel {
+    padding: 1rem;
+  }
+  .study-controls {
+    gap: 0.5rem;
+  }
+  .btn-action {
+    padding: 0.65rem 0.75rem;
+    font-size: 0.85rem;
+    gap: 0.35rem;
+  }
+  .btn-action svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
 .btn-correct {
   background: var(--success-dark);
   color: var(--success);
