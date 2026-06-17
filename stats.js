@@ -173,14 +173,88 @@ export function getGlobalStats(questions) {
   };
 }
 
+export function getQuestionOverrides() {
+  try {
+    const raw = localStorage.getItem('vibe_prep_question_overrides');
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.error('Failed to get question overrides', e);
+    return {};
+  }
+}
+
+export function getAddedQuestions(moduleId) {
+  try {
+    const raw = localStorage.getItem('vibe_prep_question_added');
+    const allAdded = raw ? JSON.parse(raw) : {};
+    return allAdded[moduleId] || [];
+  } catch (e) {
+    console.error('Failed to get added questions', e);
+    return [];
+  }
+}
+
+export function saveQuestionEdit(moduleId, questionId, updatedFields) {
+  try {
+    // 1. Check if the question is in the "added" list
+    const rawAdded = localStorage.getItem('vibe_prep_question_added');
+    const allAdded = rawAdded ? JSON.parse(rawAdded) : {};
+    const addedList = allAdded[moduleId] || [];
+    const addedIndex = addedList.findIndex(q => q.id === questionId);
+    
+    if (addedIndex > -1) {
+      // It's an added question, update it directly
+      Object.assign(addedList[addedIndex], updatedFields);
+      allAdded[moduleId] = addedList;
+      localStorage.setItem('vibe_prep_question_added', JSON.stringify(allAdded));
+    } else {
+      // It's a base question, update overrides
+      const rawOverrides = localStorage.getItem('vibe_prep_question_overrides');
+      const overrides = rawOverrides ? JSON.parse(rawOverrides) : {};
+      if (!overrides[questionId]) {
+        overrides[questionId] = {};
+      }
+      Object.assign(overrides[questionId], updatedFields);
+      localStorage.setItem('vibe_prep_question_overrides', JSON.stringify(overrides));
+    }
+  } catch (e) {
+    console.error('Failed to save question edit', e);
+  }
+}
+
+export function saveAddedQuestion(moduleId, question) {
+  try {
+    const raw = localStorage.getItem('vibe_prep_question_added');
+    const allAdded = raw ? JSON.parse(raw) : {};
+    if (!allAdded[moduleId]) {
+      allAdded[moduleId] = [];
+    }
+    
+    const index = allAdded[moduleId].findIndex(q => q.id === question.id);
+    if (index > -1) {
+      allAdded[moduleId][index] = question;
+    } else {
+      allAdded[moduleId].push(question);
+    }
+    
+    localStorage.setItem('vibe_prep_question_added', JSON.stringify(allAdded));
+  } catch (e) {
+    console.error('Failed to save added question', e);
+  }
+}
+
 export function exportProgressJSON() {
   const stats = getStats();
   const customModules = localStorage.getItem('vibe_prep_custom_modules') || '[]';
+  const overrides = localStorage.getItem('vibe_prep_question_overrides') || '{}';
+  const added = localStorage.getItem('vibe_prep_question_added') || '{}';
 
   const backup = {
     version: '1.0',
     stats: stats,
-    customModules: JSON.parse(customModules)
+    customModules: JSON.parse(customModules),
+    overrides: JSON.parse(overrides),
+    added: JSON.parse(added)
   };
 
   return JSON.stringify(backup, null, 2);
@@ -201,6 +275,16 @@ export function importProgressJSON(jsonString) {
     // Check if customModules exist
     if (Array.isArray(backup.customModules)) {
       localStorage.setItem('vibe_prep_custom_modules', JSON.stringify(backup.customModules));
+    }
+
+    // Check if overrides exist
+    if (backup.overrides && typeof backup.overrides === 'object') {
+      localStorage.setItem('vibe_prep_question_overrides', JSON.stringify(backup.overrides));
+    }
+
+    // Check if added questions exist
+    if (backup.added && typeof backup.added === 'object') {
+      localStorage.setItem('vibe_prep_question_added', JSON.stringify(backup.added));
     }
 
     return true;

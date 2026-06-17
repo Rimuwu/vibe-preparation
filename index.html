@@ -6,7 +6,7 @@
   <title>Vibe Prep - Платформа Подготовки</title>
   
   <!-- Styling -->
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=1.0.3">
   
   <!-- Prism.js Dark Theme for Code Blocks -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
@@ -68,13 +68,21 @@
           <textarea id="input-module-desc" class="text-control" placeholder="Краткое описание того, о чем эти вопросы..." style="min-height: 50px;"></textarea>
         </div>
 
-        <div id="module-dropzone" class="file-dropzone" style="padding: 1.25rem 1rem; margin-bottom: 0;">
+        <div id="module-dropzone" class="file-dropzone" style="padding: 1.25rem 1rem; margin-bottom: 0.75rem;">
           <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="width: 24px; height: 24px; margin-bottom: 0.25rem;">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"></path>
           </svg>
           <p id="module-dropzone-text" style="font-size: 0.85rem;">Нажмите или перетащите .md файл</p>
           <input type="file" id="module-file-input" accept=".md" style="display: none;">
         </div>
+
+        <button id="btn-create-empty-module" class="btn-action" style="padding: 0.6rem; font-size: 0.85rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.25rem;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Создать пустую тему
+        </button>
       </div>
     </main>
 
@@ -137,6 +145,15 @@
           </select>
         </div>
 
+        <div class="form-group">
+          <label for="select-progress-filter">Фильтр по прогрессу</label>
+          <select id="select-progress-filter" class="select-control">
+            <option value="all">Все вопросы</option>
+            <option value="no_correct">Без правильных ответов</option>
+            <option value="no_attempts">Вообще без ответов (новые)</option>
+          </select>
+        </div>
+
         <div class="form-group" style="margin-top: 1.25rem; margin-bottom: 0.25rem;">
           <label class="checkbox-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-weight: normal; font-size: 0.95rem; user-select: none;">
             <input type="checkbox" id="chk-only-difficult" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--warning);">
@@ -182,6 +199,12 @@
             
             <!-- Card Front -->
             <div class="card-face card-front">
+              <button class="btn-icon card-edit-btn" title="Редактировать вопрос/ответ" style="position: absolute; top: 1.25rem; left: 1.25rem; z-index: 10;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </button>
               <div id="card-starred" class="starred-badge" style="display: none;">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
@@ -194,6 +217,12 @@
 
             <!-- Card Back -->
             <div class="card-face card-back">
+              <button class="btn-icon card-edit-btn" title="Редактировать вопрос/ответ" style="position: absolute; top: 1.25rem; left: 1.25rem; z-index: 10;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </button>
               <div class="answer-section">
                 <!-- Short Answer -->
                 <div id="sec-short-ans">
@@ -227,6 +256,12 @@
             <textarea id="typed-answer" class="text-control" placeholder="Напишите ответ своими словами..."></textarea>
             <button id="btn-submit-answer" class="btn-primary" style="padding: 0.6rem; font-size: 0.9rem;">Проверить ответ</button>
             <div id="input-feedback" class="input-feedback"></div>
+          </div>
+
+          <!-- Free-mode self-study answer notepad -->
+          <div id="free-input-container" class="text-input-group" style="display: none;">
+            <label for="free-typed-answer" style="font-size: 0.8rem; color: var(--text-muted);">Запишите ответ для себя (перед проверкой):</label>
+            <textarea id="free-typed-answer" class="text-control" placeholder="Напишите ответ своими словами перед переворотом карточки..."></textarea>
           </div>
 
           <!-- Evaluation control buttons -->
@@ -350,6 +385,33 @@
           <input type="text" id="stats-search" class="search-input" placeholder="Поиск по вопросам...">
         </div>
 
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+          <select id="stats-category-filter" class="select-control" style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+            <option value="all">Все разделы</option>
+          </select>
+          <select id="stats-correct-filter" class="select-control" style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+            <option value="all">Все по правильности</option>
+            <option value="correct">Верно отвеченные</option>
+            <option value="incorrect">Неверно отвеченные</option>
+            <option value="unanswered">Не отвеченные</option>
+          </select>
+          <select id="stats-difficulty-filter" class="select-control" style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+            <option value="all">Все по сложности</option>
+            <option value="difficult">Сложные</option>
+            <option value="normal">Не сложные</option>
+          </select>
+          <select id="stats-sort-by" class="select-control" style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+            <option value="number_asc">По номеру ↑</option>
+            <option value="number_desc">По номеру ↓</option>
+            <option value="accuracy_asc">По точности ↑</option>
+            <option value="accuracy_desc">По точности ↓</option>
+            <option value="attempts_asc">По попыткам ↑</option>
+            <option value="attempts_desc">По попыткам ↓</option>
+            <option value="difficult_first">Сначала сложные</option>
+            <option value="easy_first">Сначала простые</option>
+          </select>
+        </div>
+
         <div id="stats-list" class="stats-list">
           <!-- Dynamic stats rows loaded here -->
         </div>
@@ -371,11 +433,44 @@
         </div>
         <p id="viewer-desc" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;"></p>
         
-        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
-          <input type="text" id="viewer-search" class="search-input" placeholder="Поиск по вопросам..." style="flex-grow: 1;">
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+          <input type="text" id="viewer-search" class="search-input" placeholder="Поиск по вопросам..." style="flex-grow: 1; min-width: 150px;">
           <button id="btn-viewer-toggle-all" class="btn-action" style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); white-space: nowrap; display: flex; align-items: center; gap: 0.25rem;">
             Свернуть все
           </button>
+          <button id="btn-viewer-export-md" class="btn-action" style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); white-space: nowrap; display: flex; align-items: center; gap: 0.25rem;">
+            Экспорт в .md
+          </button>
+          <button id="btn-viewer-add-question" class="btn-action" style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--primary); border-radius: var(--radius-sm); border: 1px solid var(--primary); background: var(--primary-dark); color: var(--primary); white-space: nowrap; display: flex; align-items: center; gap: 0.25rem;">
+            + Добавить вопрос
+          </button>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+          <select id="viewer-category-filter" class="select-control" style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+            <option value="all">Все разделы</option>
+          </select>
+          <select id="viewer-correct-filter" class="select-control" style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+            <option value="all">Все по правильности</option>
+            <option value="correct">Верно отвеченные</option>
+            <option value="incorrect">Неверно отвеченные</option>
+            <option value="unanswered">Не отвеченные</option>
+          </select>
+          <select id="viewer-difficulty-filter" class="select-control" style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+            <option value="all">Все по сложности</option>
+            <option value="difficult">Сложные</option>
+            <option value="normal">Не сложные</option>
+          </select>
+          <select id="viewer-sort-by" class="select-control" style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+            <option value="number_asc">По номеру ↑</option>
+            <option value="number_desc">По номеру ↓</option>
+            <option value="accuracy_asc">По точности ↑</option>
+            <option value="accuracy_desc">По точности ↓</option>
+            <option value="attempts_asc">По попыткам ↑</option>
+            <option value="attempts_desc">По попыткам ↓</option>
+            <option value="difficult_first">Сначала сложные</option>
+            <option value="easy_first">Сначала простые</option>
+          </select>
         </div>
       </div>
 
@@ -386,7 +481,24 @@
 
   </div>
 
+  <!-- Custom Modal Overlay (Glassmorphism Alerts, Confirms & Editing) -->
+  <div id="custom-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">Сообщение</h3>
+        <button id="modal-close" class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <!-- Content injected dynamically -->
+      </div>
+      <div class="modal-footer" id="modal-footer">
+        <button id="modal-btn-cancel" class="btn-action" style="border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main);">Отмена</button>
+        <button id="modal-btn-ok" class="btn-primary" style="width: auto; border-radius: var(--radius-sm); padding: 0.6rem 1.25rem;">ОК</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Main scripts -->
-  <script type="module" src="app.js"></script>
+  <script type="module" src="app.js?v=1.0.3"></script>
 </body>
 </html>

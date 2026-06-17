@@ -503,6 +503,7 @@ header {
 }
 
 .text-control {
+  width: 100%;
   background: #1f1f1f;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
@@ -1083,4 +1084,112 @@ header {
   background: var(--warning-dark);
   color: var(--warning);
   border: 1px solid rgba(253, 214, 99, 0.1);
+}
+
+/* Custom Modal Overlay (Glassmorphism & Slide-up) */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease-in-out;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-content {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  width: 90%;
+  max-width: 550px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  transform: translateY(20px);
+  transition: transform 0.25s ease-in-out;
+  overflow: hidden;
+}
+
+.modal-overlay.active .modal-content {
+  transform: translateY(0);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.6rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.25rem;
+  transition: var(--transition);
+}
+
+.modal-close-btn:hover {
+  color: #ffffff;
+}
+
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  line-height: 1.6;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid var(--border-color);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* Edit button inside study card */
+.card-edit-btn {
+  background: rgba(0, 0, 0, 0.3) !important;
+  color: var(--text-muted) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.card-edit-btn:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+
+/* Edit button inside viewer cards list */
+.viewer-edit-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--primary-hover) !important;
 }

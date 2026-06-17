@@ -13,7 +13,11 @@ import {
   getGlobalStats, 
   resetAllStats,
   exportProgressJSON,
-  importProgressJSON
+  importProgressJSON,
+  getQuestionOverrides,
+  getAddedQuestions,
+  saveQuestionEdit,
+  saveAddedQuestion
 } from './stats.js';
 import { prepareSession } from './algorithms.js';
 
@@ -54,6 +58,7 @@ const currentModuleDesc = document.getElementById('current-module-desc');
 const selectCategory = document.getElementById('select-category');
 const selectAlgorithm = document.getElementById('select-algorithm');
 const selectQType = document.getElementById('select-qtype');
+const selectProgressFilter = document.getElementById('select-progress-filter');
 const chkOnlyDifficult = document.getElementById('chk-only-difficult');
 
 const btnStartSession = document.getElementById('btn-start-session');
@@ -104,6 +109,263 @@ const statCompleted = document.getElementById('stat-completed');
 const statDifficult = document.getElementById('stat-difficult');
 const statAttempts = document.getElementById('stat-attempts');
 
+// Custom Modal & New buttons
+const btnCreateEmptyModule = document.getElementById('btn-create-empty-module');
+const btnViewerExportMd = document.getElementById('btn-viewer-export-md');
+const btnViewerAddQuestion = document.getElementById('btn-viewer-add-question');
+const viewerCategoryFilter = document.getElementById('viewer-category-filter');
+const viewerDifficultyFilter = document.getElementById('viewer-difficulty-filter');
+const statsCorrectFilter = document.getElementById('stats-correct-filter');
+const statsDifficultyFilter = document.getElementById('stats-difficulty-filter');
+const viewerCorrectFilter = document.getElementById('viewer-correct-filter');
+const viewerSortBy = document.getElementById('viewer-sort-by');
+const statsCategoryFilter = document.getElementById('stats-category-filter');
+const statsSortBy = document.getElementById('stats-sort-by');
+
+const customModal = document.getElementById('custom-modal');
+const modalTitle = document.getElementById('modal-title');
+const modalBody = document.getElementById('modal-body');
+const modalClose = document.getElementById('modal-close');
+const modalBtnCancel = document.getElementById('modal-btn-cancel');
+const modalBtnOk = document.getElementById('modal-btn-ok');
+
+/* -------------------------------------------------------------
+ * 1. Startup & Module Loading
+ * ------------------------------------------------------------- */
+
+/* -------------------------------------------------------------
+ * 0. Modal & Alert/Confirm Custom Dialogs & Loading Helpers
+ * ------------------------------------------------------------- */
+
+function showModalAlert(message, title = 'Внимание') {
+  return new Promise((resolve) => {
+    modalTitle.textContent = title;
+    modalBody.innerHTML = `<p>${message.replace(/\n/g, '<br>')}</p>`;
+    modalBtnCancel.style.display = 'none';
+    modalBtnOk.style.display = 'block';
+    modalBtnOk.textContent = 'ОК';
+    customModal.style.display = 'flex';
+    customModal.classList.add('active');
+
+    const cleanUp = () => {
+      customModal.style.display = 'none';
+      customModal.classList.remove('active');
+      modalBtnOk.removeEventListener('click', onOk);
+      modalClose.removeEventListener('click', onClose);
+    };
+
+    function onOk() {
+      cleanUp();
+      resolve();
+    }
+    function onClose() {
+      cleanUp();
+      resolve();
+    }
+
+    modalBtnOk.addEventListener('click', onOk);
+    modalClose.addEventListener('click', onClose);
+  });
+}
+
+function showModalConfirm(message, title = 'Подтверждение') {
+  return new Promise((resolve) => {
+    modalTitle.textContent = title;
+    modalBody.innerHTML = `<p>${message.replace(/\n/g, '<br>')}</p>`;
+    modalBtnCancel.style.display = 'block';
+    modalBtnCancel.textContent = 'Отмена';
+    modalBtnOk.style.display = 'block';
+    modalBtnOk.textContent = 'ОК';
+    customModal.style.display = 'flex';
+    customModal.classList.add('active');
+
+    const cleanUp = (result) => {
+      customModal.style.display = 'none';
+      customModal.classList.remove('active');
+      modalBtnOk.removeEventListener('click', onOk);
+      modalBtnCancel.removeEventListener('click', onCancel);
+      modalClose.removeEventListener('click', onClose);
+      resolve(result);
+    };
+
+    function onOk() {
+      cleanUp(true);
+    }
+    function onCancel() {
+      cleanUp(false);
+    }
+    function onClose() {
+      cleanUp(false);
+    }
+
+    modalBtnOk.addEventListener('click', onOk);
+    modalBtnCancel.addEventListener('click', onCancel);
+    modalClose.addEventListener('click', onClose);
+  });
+}
+
+function showModalEditQuestion(q, isNew = false) {
+  return new Promise((resolve) => {
+    modalTitle.textContent = isNew ? 'Добавить вопрос' : 'Редактировать вопрос/ответ';
+    
+    // Generate form
+    modalBody.innerHTML = `
+      <div class="form-group">
+        <label for="edit-q-category">Раздел / Категория</label>
+        <input type="text" id="edit-q-category" class="search-input" value="${q.category || 'Общее'}">
+      </div>
+      <div class="form-group">
+        <label for="edit-q-title">Вопрос</label>
+        <textarea id="edit-q-title" class="text-control" style="min-height: 80px;">${q.title || ''}</textarea>
+      </div>
+      <div class="form-group">
+        <label for="edit-q-short">Краткий ответ / Код</label>
+        <textarea id="edit-q-short" class="text-control" style="min-height: 120px; font-family: monospace;">${q.shortAnswer || ''}</textarea>
+      </div>
+      <div class="form-group">
+        <label for="edit-q-detailed">Подробное пояснение</label>
+        <textarea id="edit-q-detailed" class="text-control" style="min-height: 150px;">${q.detailedAnswer || ''}</textarea>
+      </div>
+    `;
+    
+    modalBtnCancel.style.display = 'block';
+    modalBtnCancel.textContent = 'Отмена';
+    modalBtnOk.style.display = 'block';
+    modalBtnOk.textContent = 'Сохранить';
+    customModal.style.display = 'flex';
+    customModal.classList.add('active');
+
+    const cleanUp = (savedData) => {
+      customModal.style.display = 'none';
+      customModal.classList.remove('active');
+      modalBtnOk.removeEventListener('click', onSave);
+      modalBtnCancel.removeEventListener('click', onCancel);
+      modalClose.removeEventListener('click', onClose);
+      resolve(savedData);
+    };
+
+    function onSave() {
+      const category = document.getElementById('edit-q-category').value.trim();
+      const title = document.getElementById('edit-q-title').value.trim();
+      const shortAnswer = document.getElementById('edit-q-short').value.trim();
+      const detailedAnswer = document.getElementById('edit-q-detailed').value.trim();
+      
+      if (!title) {
+        showModalAlert('Заголовок вопроса не может быть пустым.');
+        return;
+      }
+      
+      cleanUp({
+        category: category || 'Общее',
+        title,
+        shortAnswer,
+        detailedAnswer
+      });
+    }
+
+    function onCancel() {
+      cleanUp(null);
+    }
+    function onClose() {
+      cleanUp(null);
+    }
+
+    modalBtnOk.addEventListener('click', onSave);
+    modalBtnCancel.addEventListener('click', onCancel);
+    modalClose.addEventListener('click', onClose);
+  });
+}
+
+async function loadQuestionsForModule(mod) {
+  let mdText = '';
+  if (mod.isCustom) {
+    mdText = mod.mdText;
+  } else {
+    const resp = await fetch(mod.file);
+    if (!resp.ok) throw new Error('Файл не найден');
+    mdText = await resp.text();
+  }
+  
+  const questions = parseMarkdown(mdText);
+  questions.forEach(q => {
+    q.id = `${mod.id}_${q.id}`;
+    // Apply overrides
+    const overrides = getQuestionOverrides();
+    if (overrides[q.id]) {
+      Object.assign(q, overrides[q.id]);
+    }
+  });
+  
+  // Append added questions
+  const added = getAddedQuestions(mod.id);
+  questions.push(...added);
+  
+  return questions;
+}
+
+function updateCustomModuleMd(moduleId) {
+  const mod = allModules.find(m => m.id === moduleId);
+  if (mod && mod.isCustom) {
+    const serialized = serializeQuestionsToMarkdown(dbQuestions, mod.name);
+    mod.mdText = serialized;
+    
+    // Save to localStorage custom modules list
+    const customList = allModules.filter(m => m.isCustom);
+    localStorage.setItem('vibe_prep_custom_modules', JSON.stringify(customList));
+  }
+}
+
+function serializeQuestionsToMarkdown(questions, moduleName) {
+  let md = `# ${moduleName.toUpperCase()}\n\n`;
+  
+  // Group by category
+  const categories = {};
+  questions.forEach(q => {
+    const cat = q.category || 'Общее';
+    if (!categories[cat]) {
+      categories[cat] = [];
+    }
+    categories[cat].push(q);
+  });
+  
+  for (const catName in categories) {
+    md += `## ${catName}\n\n`;
+    
+    categories[catName].forEach(q => {
+      const star = q.isStarred ? '[!] ' : '';
+      md += `### ${star}${q.number}. ${q.title}\n`;
+      
+      // If it's a multiple choice question
+      if (q.type === 'choice' && q.choices && q.choices.length > 0) {
+        q.choices.forEach(choice => {
+          const check = choice.isCorrect ? 'x' : ' ';
+          md += `- [${check}] ${choice.text}\n`;
+        });
+      }
+      
+      if (q.shortAnswer) {
+        if (q.shortAnswer.includes('\n')) {
+          md += `* **Краткий ответ**:\n  ${q.shortAnswer.split('\n').join('\n  ')}\n`;
+        } else {
+          md += `* **Краткий ответ**: ${q.shortAnswer}\n`;
+        }
+      }
+      
+      if (q.detailedAnswer) {
+        if (q.detailedAnswer.includes('\n')) {
+          md += `* **Пояснение**:\n  ${q.detailedAnswer.split('\n').join('\n  ')}\n`;
+        } else {
+          md += `* **Пояснение**: ${q.detailedAnswer}\n`;
+        }
+      }
+      
+      md += `\n`;
+    });
+  }
+  
+  return md;
+}
+
 /* -------------------------------------------------------------
  * 1. Startup & Module Loading
  * ------------------------------------------------------------- */
@@ -127,20 +389,9 @@ async function initApp() {
         const mod = allModules.find(m => m.id === state.moduleId);
         if (mod) {
           activeModule = mod;
-          // Load questions for the active module
-          let mdText = '';
-          if (activeModule.isCustom) {
-            mdText = activeModule.mdText;
-          } else {
-            const resp = await fetch(activeModule.file);
-            if (!resp.ok) throw new Error('Файл не найден');
-            mdText = await resp.text();
-          }
           
-          dbQuestions = parseMarkdown(mdText);
-          dbQuestions.forEach(q => {
-            q.id = `${activeModule.id}_${q.id}`;
-          });
+          // Load questions for the active module using helper
+          dbQuestions = await loadQuestionsForModule(activeModule);
           
           fileLoaded = true;
           sessionQueue = state.sessionQueue;
@@ -155,6 +406,9 @@ async function initApp() {
             selectAlgorithm.value = state.settings.algorithm || 'sequential';
             selectQType.value = state.settings.qtype || 'free';
             chkOnlyDifficult.checked = !!state.settings.onlyDifficult;
+            if (selectProgressFilter) {
+              selectProgressFilter.value = state.settings.progressFilter || 'all';
+            }
           }
           
           populateCategories();
@@ -228,6 +482,7 @@ function renderModulesList() {
     card.className = 'module-card';
     
     const header = document.createElement('div');
+    card.appendChild(header); // Wait, this needs module-card-header styling class!
     header.className = 'module-card-header';
     
     const title = document.createElement('h3');
@@ -246,9 +501,9 @@ function renderModulesList() {
           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
         </svg>
       `;
-      delBtn.addEventListener('click', (e) => {
+      delBtn.addEventListener('click', async (e) => {
         e.stopPropagation(); // Prevent card selection
-        if (confirm(`Вы уверены, что хотите удалить тему "${mod.name}"? Все ее данные будут стерты.`)) {
+        if (await showModalConfirm(`Вы уверены, что хотите удалить тему "${mod.name}"? Все ее данные будут стерты.`)) {
           deleteCustomModule(mod.id);
         }
       });
@@ -269,7 +524,6 @@ function renderModulesList() {
     
     footer.appendChild(typeLabel);
     
-    card.appendChild(header);
     card.appendChild(desc);
     card.appendChild(footer);
     
@@ -289,22 +543,9 @@ async function selectModule(mod) {
   currentModuleTitle.textContent = mod.name;
   currentModuleDesc.textContent = mod.description || '';
   
-  // Load questions
+  // Load questions using helper
   try {
-    let mdText = '';
-    if (mod.isCustom) {
-      mdText = mod.mdText;
-    } else {
-      const resp = await fetch(mod.file);
-      if (!resp.ok) throw new Error('Файл не найден');
-      mdText = await resp.text();
-    }
-    
-    dbQuestions = parseMarkdown(mdText);
-    dbQuestions.forEach(q => {
-      q.id = `${mod.id}_${q.id}`;
-    });
-    
+    dbQuestions = await loadQuestionsForModule(mod);
     fileLoaded = true;
     
     // Populate category dropdown
@@ -312,13 +553,15 @@ async function selectModule(mod) {
     
     switchScreen('dashboard');
   } catch (err) {
-    alert(`Ошибка при загрузке темы: ${err.message}`);
+    showModalAlert(`Ошибка при загрузке темы: ${err.message}`);
     switchScreen('modules');
   }
 }
 
 function populateCategories() {
-  const categories = new Set(dbQuestions.map(q => q.category));
+  const categories = Array.from(new Set(dbQuestions.map(q => q.category || 'Общее')));
+  
+  // Dashboard category select
   selectCategory.innerHTML = '<option value="all">Все вопросы</option>';
   categories.forEach(cat => {
     const opt = document.createElement('option');
@@ -326,6 +569,28 @@ function populateCategories() {
     opt.textContent = cat;
     selectCategory.appendChild(opt);
   });
+
+  // Viewer category select
+  if (viewerCategoryFilter) {
+    viewerCategoryFilter.innerHTML = '<option value="all">Все разделы</option>';
+    categories.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat;
+      opt.textContent = cat;
+      viewerCategoryFilter.appendChild(opt);
+    });
+  }
+
+  // Stats category select
+  if (statsCategoryFilter) {
+    statsCategoryFilter.innerHTML = '<option value="all">Все разделы</option>';
+    categories.forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat;
+      opt.textContent = cat;
+      statsCategoryFilter.appendChild(opt);
+    });
+  }
 }
 
 function deleteCustomModule(id) {
@@ -354,7 +619,7 @@ function handleCustomModuleFile(file) {
   const desc = inputModuleDesc.value.trim();
   
   const reader = new FileReader();
-  reader.onload = (e) => {
+  reader.onload = async (e) => {
     try {
       const mdText = e.target.result;
       const questions = parseMarkdown(mdText);
@@ -381,9 +646,9 @@ function handleCustomModuleFile(file) {
       
       loadModules();
       
-      alert(`Тема "${newMod.name}" успешно загружена! (Вопросов: ${questions.length})`);
+      showModalAlert(`Тема "${newMod.name}" успешно загружена! (Вопросов: ${questions.length})`);
     } catch (err) {
-      alert('Ошибка при разборе файла вопросов: ' + err.message);
+      showModalAlert('Ошибка при разборе файла вопросов: ' + err.message);
     }
   };
   reader.readAsText(file);
@@ -397,6 +662,12 @@ function setupEventListeners() {
   // Navigation
   btnShowStats.addEventListener('click', () => {
     switchScreen('stats');
+    // Reset filters
+    statsCategoryFilter.value = 'all';
+    statsCorrectFilter.value = 'all';
+    statsDifficultyFilter.value = 'all';
+    statsSortBy.value = 'number_asc';
+    statsSearch.value = '';
     renderStatsTable();
   });
   
@@ -425,6 +696,10 @@ function setupEventListeners() {
     viewerTitle.textContent = activeModule ? `Просмотр темы: ${activeModule.name}` : 'Просмотр темы';
     viewerDesc.textContent = activeModule ? (activeModule.description || '') : '';
     viewerSearch.value = '';
+    viewerCategoryFilter.value = 'all';
+    viewerCorrectFilter.value = 'all';
+    viewerDifficultyFilter.value = 'all';
+    viewerSortBy.value = 'number_asc';
     isAllExpanded = true;
     btnViewerToggleAll.textContent = 'Свернуть все';
     renderViewerList();
@@ -435,6 +710,16 @@ function setupEventListeners() {
   });
 
   viewerSearch.addEventListener('input', renderViewerList);
+  viewerCategoryFilter.addEventListener('change', renderViewerList);
+  viewerCorrectFilter.addEventListener('change', renderViewerList);
+  viewerDifficultyFilter.addEventListener('change', renderViewerList);
+  viewerSortBy.addEventListener('change', renderViewerList);
+  
+  statsSearch.addEventListener('input', renderStatsTable);
+  statsCategoryFilter.addEventListener('change', renderStatsTable);
+  statsCorrectFilter.addEventListener('change', renderStatsTable);
+  statsDifficultyFilter.addEventListener('change', renderStatsTable);
+  statsSortBy.addEventListener('change', renderStatsTable);
 
   btnViewerToggleAll.addEventListener('click', () => {
     isAllExpanded = !isAllExpanded;
@@ -473,6 +758,83 @@ function setupEventListeners() {
     if (file) handleCustomModuleFile(file);
   });
 
+  // Create empty module
+  btnCreateEmptyModule.addEventListener('click', async () => {
+    const name = inputModuleName.value.trim();
+    const desc = inputModuleDesc.value.trim();
+    if (!name) {
+      showModalAlert('Пожалуйста, введите название темы.');
+      return;
+    }
+    
+    const newMod = {
+      id: 'custom_' + Date.now(),
+      name: name,
+      description: desc || 'Пользовательская тема',
+      mdText: `# ${name}\n\n## Общее\n`,
+      isCustom: true
+    };
+    
+    const custom = localStorage.getItem('vibe_prep_custom_modules');
+    const list = custom ? JSON.parse(custom) : [];
+    list.push(newMod);
+    localStorage.setItem('vibe_prep_custom_modules', JSON.stringify(list));
+    
+    inputModuleName.value = '';
+    inputModuleDesc.value = '';
+    
+    await loadModules();
+    showModalAlert(`Тема "${newMod.name}" успешно создана! Вы можете перейти в просмотр темы, чтобы добавить вопросы.`);
+  });
+
+  // Export module questions as MD file
+  btnViewerExportMd.addEventListener('click', () => {
+    if (!activeModule) return;
+    try {
+      const mdText = serializeQuestionsToMarkdown(dbQuestions, activeModule.name);
+      const blob = new Blob([mdText], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const safeName = activeModule.name.replace(/[^a-z0-9а-яё_-]/gi, '_');
+      a.download = `${safeName}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      showModalAlert('Не удалось экспортировать файл: ' + e.message);
+    }
+  });
+
+  // Add new question button inside viewer screen
+  btnViewerAddQuestion.addEventListener('click', async () => {
+    if (!activeModule) return;
+    const newQ = {
+      id: `${activeModule.id}_q_added_${Date.now()}`,
+      number: dbQuestions.length > 0 ? Math.max(...dbQuestions.map(q => q.number)) + 1 : 1,
+      category: 'Общее',
+      title: '',
+      shortAnswer: '',
+      detailedAnswer: '',
+      type: 'free',
+      isStarred: false
+    };
+
+    const updated = await showModalEditQuestion(newQ, true);
+    if (updated) {
+      Object.assign(newQ, updated);
+      dbQuestions.push(newQ);
+      saveAddedQuestion(activeModule.id, newQ);
+      
+      if (activeModule.isCustom) {
+        updateCustomModuleMd(activeModule.id);
+      }
+      
+      populateCategories();
+      renderViewerList();
+      showModalAlert('Новый вопрос успешно добавлен!');
+    }
+  });
+
   // Session Start / End
   btnStartSession.addEventListener('click', startStudySession);
   btnExitStudy.addEventListener('click', () => {
@@ -488,6 +850,28 @@ function setupEventListeners() {
     flipCard();
   });
 
+  // Card edit buttons click listeners
+  document.querySelectorAll('.card-edit-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation(); // prevent card flip
+      const q = sessionQueue[currentIndex];
+      if (!q) return;
+
+      const updated = await showModalEditQuestion(q, false);
+      if (updated) {
+        Object.assign(q, updated);
+        saveQuestionEdit(activeModule.id, q.id, updated);
+        
+        if (activeModule.isCustom) {
+          updateCustomModuleMd(activeModule.id);
+        }
+        
+        loadCard(currentIndex);
+        showModalAlert('Вопрос успешно сохранен!');
+      }
+    });
+  });
+
   // Study evaluation actions
   btnCorrect.addEventListener('click', () => recordSessionProgress(true));
   btnIncorrect.addEventListener('click', () => recordSessionProgress(false));
@@ -500,16 +884,14 @@ function setupEventListeners() {
   btnImportProgressTrigger.addEventListener('click', () => importProgressInput.click());
   importProgressInput.addEventListener('change', importProgress);
 
-  // Stats
-  btnResetStats.addEventListener('click', () => {
-    if (confirm('Вы уверены, что хотите сбросить всю статистику? Это действие необратимо.')) {
+  // Stats Reset
+  btnResetStats.addEventListener('click', async () => {
+    if (await showModalConfirm('Вы уверены, что хотите сбросить всю статистику? Это действие необратимо.')) {
       resetAllStats();
       updateGlobalStatsUI();
       renderStatsTable();
     }
   });
-
-  statsSearch.addEventListener('input', renderStatsTable);
 
   // Keyboard Shortcuts (PC)
   document.addEventListener('keydown', handleKeyboardShortcuts);
@@ -556,21 +938,26 @@ function switchScreen(screenName) {
  * ------------------------------------------------------------- */
 
 function startStudySession() {
-  if (!fileLoaded || dbQuestions.length === 0) {
-    alert('Пожалуйста, сначала выберите тему.');
+  if (!fileLoaded) {
+    showModalAlert('Пожалуйста, сначала выберите тему.');
+    return;
+  }
+  if (dbQuestions.length === 0) {
+    showModalAlert('В этой теме пока нет вопросов. Вы можете добавить вопросы на странице просмотра темы.');
     return;
   }
 
   const category = selectCategory.value;
   const algorithm = selectAlgorithm.value;
   const onlyDifficult = chkOnlyDifficult.checked;
+  const progressFilter = selectProgressFilter.value;
   
-  sessionQueue = prepareSession(dbQuestions, category, algorithm, onlyDifficult);
+  sessionQueue = prepareSession(dbQuestions, category, algorithm, onlyDifficult, progressFilter);
   if (sessionQueue.length === 0) {
     if (onlyDifficult) {
-      alert('Нет сложных вопросов в выбранной категории.');
+      showModalAlert('Нет сложных вопросов в выбранной категории.');
     } else {
-      alert('Нет вопросов, соответствующих выбранным критериям.');
+      showModalAlert('Нет вопросов, соответствующих выбранным критериям.');
     }
     return;
   }
@@ -599,7 +986,8 @@ function saveActiveSession() {
       category: selectCategory.value,
       algorithm: selectAlgorithm.value,
       qtype: selectQType.value,
-      onlyDifficult: chkOnlyDifficult.checked
+      onlyDifficult: chkOnlyDifficult.checked,
+      progressFilter: selectProgressFilter.value
     }
   };
   localStorage.setItem('vibe_prep_active_session', JSON.stringify(sessionState));
@@ -671,6 +1059,7 @@ function loadCard(index) {
 function setupQtypeUI(q, qType) {
   choiceContainer.style.display = 'none';
   inputContainer.style.display = 'none';
+  document.getElementById('free-input-container').style.display = 'none';
   btnAcceptAlternative.style.display = 'none';
   
   btnCorrect.disabled = false;
@@ -685,6 +1074,9 @@ function setupQtypeUI(q, qType) {
     inputContainer.style.display = 'flex';
     btnCorrect.disabled = true;
     btnIncorrect.disabled = true;
+  } else if (qType === 'free') {
+    document.getElementById('free-typed-answer').value = '';
+    document.getElementById('free-input-container').style.display = 'flex';
   }
 }
 
@@ -739,7 +1131,7 @@ function recordSessionProgress(isCorrect) {
 }
 
 function finishSession() {
-  alert(`Поздравляем! Сессия завершена.\nРезультат: ${sessionCorrect} из ${sessionAttempts} правильно (${sessionAttempts > 0 ? Math.round(sessionCorrect / sessionAttempts * 100) : 0}%)`);
+  showModalAlert(`Поздравляем! Сессия завершена.\nРезультат: ${sessionCorrect} из ${sessionAttempts} правильно (${sessionAttempts > 0 ? Math.round(sessionCorrect / sessionAttempts * 100) : 0}%)`);
   clearActiveSession();
   switchScreen('dashboard');
 }
@@ -853,7 +1245,7 @@ function evaluateTypedAnswer() {
 
   const typed = typedAnswer.value.trim();
   if (!typed) {
-    alert('Пожалуйста, введите ответ перед проверкой.');
+    showModalAlert('Пожалуйста, введите ответ перед проверкой.');
     return;
   }
 
@@ -1023,14 +1415,85 @@ function updateGlobalStatsUI() {
   statAttempts.textContent = global.totalCorrect + global.totalIncorrect;
 }
 
+function sortQuestions(questions, sortBy, stats) {
+  return [...questions].sort((a, b) => {
+    const statA = stats[a.id] || { correctCount: 0, incorrectCount: 0, isDifficult: false };
+    const statB = stats[b.id] || { correctCount: 0, incorrectCount: 0, isDifficult: false };
+
+    const totalA = statA.correctCount + statA.incorrectCount;
+    const totalB = statB.correctCount + statB.incorrectCount;
+    const accA = totalA > 0 ? (statA.correctCount / totalA) : 0;
+    const accB = totalB > 0 ? (statB.correctCount / totalB) : 0;
+
+    const isDiffA = statA.isDifficult || a.isStarred ? 1 : 0;
+    const isDiffB = statB.isDifficult || b.isStarred ? 1 : 0;
+
+    switch (sortBy) {
+      case 'number_asc':
+        return a.number - b.number;
+      case 'number_desc':
+        return b.number - a.number;
+      case 'accuracy_asc':
+        if (accA !== accB) return accA - accB;
+        return a.number - b.number;
+      case 'accuracy_desc':
+        if (accA !== accB) return accB - accA;
+        return a.number - b.number;
+      case 'attempts_asc':
+        if (totalA !== totalB) return totalA - totalB;
+        return a.number - b.number;
+      case 'attempts_desc':
+        if (totalA !== totalB) return totalB - totalA;
+        return a.number - b.number;
+      case 'difficult_first':
+        if (isDiffA !== isDiffB) return isDiffB - isDiffA;
+        return a.number - b.number;
+      case 'easy_first':
+        if (isDiffA !== isDiffB) return isDiffA - isDiffB;
+        return a.number - b.number;
+      default:
+        return a.number - b.number;
+    }
+  });
+}
+
 function renderStatsTable() {
   statsList.innerHTML = '';
   const query = statsSearch.value.toLowerCase().trim();
+  const categoryFilter = statsCategoryFilter.value;
+  const correctFilter = statsCorrectFilter.value;
+  const diffFilter = statsDifficultyFilter.value;
+  const sortBy = statsSortBy.value;
   const stats = getStats();
 
-  const filtered = dbQuestions.filter(q => {
-    return q.title.toLowerCase().includes(query) || q.category.toLowerCase().includes(query);
+  let filtered = dbQuestions.filter(q => {
+    // 1. Text Search query
+    const matchQuery = q.title.toLowerCase().includes(query) || q.category.toLowerCase().includes(query);
+    if (!matchQuery) return false;
+
+    // 2. Category Filter
+    if (categoryFilter !== 'all' && q.category !== categoryFilter) return false;
+
+    const qStat = stats[q.id] || { correctCount: 0, incorrectCount: 0, isDifficult: false };
+    const hasCorrect = qStat.correctCount > 0;
+    const hasIncorrect = qStat.incorrectCount > 0;
+    const isUnanswered = qStat.correctCount === 0 && qStat.incorrectCount === 0;
+
+    // 3. Correctness Filter
+    if (correctFilter === 'correct' && !hasCorrect) return false;
+    if (correctFilter === 'incorrect' && !hasIncorrect) return false;
+    if (correctFilter === 'unanswered' && !isUnanswered) return false;
+
+    // 4. Difficulty Filter
+    const isDiff = qStat.isDifficult || q.isStarred;
+    if (diffFilter === 'difficult' && !isDiff) return false;
+    if (diffFilter === 'normal' && isDiff) return false;
+
+    return true;
   });
+
+  // Apply Sorting
+  filtered = sortQuestions(filtered, sortBy, stats);
 
   if (filtered.length === 0) {
     statsList.innerHTML = '<div style="text-align:center; padding:1.5rem; color:var(--text-muted);">Ничего не найдено</div>';
@@ -1126,7 +1589,7 @@ function exportProgress() {
     a.click();
     URL.revokeObjectURL(url);
   } catch (e) {
-    alert('Не удалось экспортировать прогресс: ' + e.message);
+    showModalAlert('Не удалось экспортировать прогресс: ' + e.message);
   }
 }
 
@@ -1135,14 +1598,14 @@ function importProgress(e) {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = (evt) => {
+  reader.onload = async (evt) => {
     try {
       const jsonText = evt.target.result;
       importProgressJSON(jsonText);
-      alert('Данные прогресса и тем успешно импортированы!');
+      await showModalAlert('Данные прогресса и тем успешно импортированы!');
       window.location.reload();
     } catch (err) {
-      alert('Ошибка при импорте: ' + err.message);
+      showModalAlert('Ошибка при импорте: ' + err.message);
     }
   };
   reader.readAsText(file);
@@ -1201,11 +1664,40 @@ function handleKeyboardShortcuts(e) {
 function renderViewerList() {
   viewerQuestionsList.innerHTML = '';
   const query = viewerSearch.value.toLowerCase().trim();
+  const categoryFilter = viewerCategoryFilter.value;
+  const correctFilter = viewerCorrectFilter.value;
+  const diffFilter = viewerDifficultyFilter.value;
+  const sortBy = viewerSortBy.value;
   const stats = getStats();
 
-  const filtered = dbQuestions.filter(q => {
-    return q.title.toLowerCase().includes(query) || q.category.toLowerCase().includes(query);
+  let filtered = dbQuestions.filter(q => {
+    // 1. Text Search query
+    const matchQuery = q.title.toLowerCase().includes(query) || q.category.toLowerCase().includes(query);
+    if (!matchQuery) return false;
+
+    // 2. Category Filter
+    if (categoryFilter !== 'all' && q.category !== categoryFilter) return false;
+
+    const qStats = getQuestionStats(q.id);
+    const hasCorrect = qStats.correctCount > 0;
+    const hasIncorrect = qStats.incorrectCount > 0;
+    const isUnanswered = qStats.correctCount === 0 && qStats.incorrectCount === 0;
+
+    // 3. Correctness Filter
+    if (correctFilter === 'correct' && !hasCorrect) return false;
+    if (correctFilter === 'incorrect' && !hasIncorrect) return false;
+    if (correctFilter === 'unanswered' && !isUnanswered) return false;
+
+    // 4. Difficulty Filter
+    const isDiff = qStats.isDifficult || q.isStarred;
+    if (diffFilter === 'difficult' && !isDiff) return false;
+    if (diffFilter === 'normal' && isDiff) return false;
+
+    return true;
   });
+
+  // Apply Sorting
+  filtered = sortQuestions(filtered, sortBy, stats);
 
   if (filtered.length === 0) {
     viewerQuestionsList.innerHTML = '<div style="text-align:center; padding:1.5rem; color:var(--text-muted);">Ничего не найдено</div>';
@@ -1282,6 +1774,33 @@ function renderViewerList() {
       updateGlobalStatsUI();
     });
 
+    // Question edit button next to starBtn
+    const editBtn = document.createElement('button');
+    editBtn.className = 'viewer-star-btn viewer-edit-btn';
+    editBtn.title = 'Редактировать вопрос / ответ';
+    editBtn.innerHTML = `
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+        <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+      </svg>
+    `;
+    editBtn.addEventListener('click', async (e) => {
+      e.stopPropagation(); // prevent card toggling
+      const updated = await showModalEditQuestion(q, false);
+      if (updated) {
+        Object.assign(q, updated);
+        saveQuestionEdit(activeModule.id, q.id, updated);
+        
+        if (activeModule.isCustom) {
+          updateCustomModuleMd(activeModule.id);
+        }
+        
+        populateCategories();
+        renderViewerList();
+        showModalAlert('Вопрос успешно сохранен!');
+      }
+    });
+
     // Expand/Collapse Chevron icon
     const toggleIcon = document.createElement('div');
     toggleIcon.className = 'viewer-card-toggle-icon';
@@ -1293,6 +1812,7 @@ function renderViewerList() {
 
     meta.appendChild(accuracyBadge);
     meta.appendChild(starBtn);
+    meta.appendChild(editBtn);
     meta.appendChild(toggleIcon);
 
     header.appendChild(titleGroup);
@@ -1373,7 +1893,10 @@ function renderViewerList() {
     card.appendChild(body);
 
     // Toggle expand collapse
-    card.addEventListener('click', () => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('button') || e.target.closest('a') || e.target.closest('textarea')) {
+        return;
+      }
       const isExpanded = card.classList.toggle('expanded');
       if (isExpanded) {
         parseAndRenderContent();
