@@ -12,27 +12,31 @@
   --panel-bg: #1e1f20;
   --border-color: #3c4043;
   --border-hover: #5f6368;
-  
+
   --text-main: #e3e3e3;
   --text-muted: #9e9e9e;
-  
+
   /* Calm Google Colors */
-  --primary: #8ab4f8; /* Google Blue */
+  --primary: #8ab4f8;
+  /* Google Blue */
   --primary-hover: #a8c7fa;
   --primary-dark: rgba(138, 180, 248, 0.15);
-  
-  --success: #81c995; /* Google Green */
+
+  --success: #81c995;
+  /* Google Green */
   --success-hover: #a3e2b7;
   --success-dark: rgba(129, 201, 149, 0.15);
-  
-  --error: #f28b82; /* Google Red */
+
+  --error: #f28b82;
+  /* Google Red */
   --error-hover: #f6aea9;
   --error-dark: rgba(242, 139, 130, 0.15);
-  
-  --warning: #fdd663; /* Google Yellow */
+
+  --warning: #fdd663;
+  /* Google Yellow */
   --warning-hover: #ffe082;
   --warning-dark: rgba(253, 214, 99, 0.15);
-  
+
   --transition: all 0.2s ease-in-out;
   --radius-lg: 16px;
   --radius-md: 12px;
@@ -61,7 +65,7 @@ body {
 /* App container */
 .app-container {
   width: 100%;
-  max-width: 90%;
+  max-width: 99%;
   min-height: 100vh;
   padding: 0.5rem;
   display: flex;
@@ -71,7 +75,7 @@ body {
 
 @media (min-width: 768px) {
   .app-container {
-    max-width: 700px;
+    max-width: 900px;
     padding: 2.5rem 1.5rem;
   }
 }
@@ -166,7 +170,7 @@ header {
     display: flex;
     z-index: 110;
   }
-  
+
   .nav-buttons {
     display: none;
     position: absolute;
@@ -184,7 +188,7 @@ header {
     align-items: stretch;
     min-width: 195px;
   }
-  
+
   .nav-buttons.active {
     display: flex;
   }
@@ -215,7 +219,8 @@ header {
   border: 1px solid var(--border-color);
   color: var(--text-main);
   padding: 0.65rem;
-  border-radius: 50%; /* Rounded circular buttons */
+  border-radius: 50%;
+  /* Rounded circular buttons */
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -231,13 +236,15 @@ header {
 
 .btn-primary {
   background: var(--primary);
-  color: #1f1f1f; /* Dark text for contrast */
+  color: #1f1f1f;
+  /* Dark text for contrast */
   border: none;
   font-family: inherit;
   font-size: 0.95rem;
   font-weight: 500;
   padding: 0.8rem 1.5rem;
-  border-radius: 100px; /* Pill button */
+  border-radius: 100px;
+  /* Pill button */
   cursor: pointer;
   transition: var(--transition);
   display: flex;
@@ -636,7 +643,8 @@ header {
   font-size: 0.9rem;
   font-weight: 500;
   padding: 0.75rem 1.25rem;
-  border-radius: 100px; /* Pill buttons for Google Style */
+  border-radius: 100px;
+  /* Pill buttons for Google Style */
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -650,14 +658,17 @@ header {
   .panel {
     padding: 1rem;
   }
+
   .study-controls {
     gap: 0.5rem;
   }
+
   .btn-action {
     padding: 0.65rem 0.75rem;
     font-size: 0.85rem;
     gap: 0.35rem;
   }
+
   .btn-action svg {
     width: 16px;
     height: 16px;
@@ -966,6 +977,7 @@ header {
     opacity: 0;
     transform: translateY(6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1399,6 +1411,7 @@ header {
   from {
     transform: translateY(100%);
   }
+
   to {
     transform: translateY(0);
   }
@@ -1453,6 +1466,7 @@ header {
     gap: 0.5rem;
     padding: 1rem;
   }
+
   .modal-footer button,
   .modal-footer .btn-action,
   .modal-footer .btn-primary {
