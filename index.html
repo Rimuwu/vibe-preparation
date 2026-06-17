@@ -28,30 +28,49 @@
         <h1>Preparation.vibe</h1>
         <span class="brand-badge">AS1</span>
       </div>
-      <div class="nav-buttons">
-        <button id="btn-show-lists" class="btn-icon" title="Мои наборы">
+      <div class="nav-container">
+        <button id="btn-menu-toggle" class="btn-icon" title="Меню">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="8" y1="6" x2="21" y2="6"></line>
-            <line x1="8" y1="12" x2="21" y2="12"></line>
-            <line x1="8" y1="18" x2="21" y2="18"></line>
-            <line x1="3" y1="6" x2="3.01" y2="6"></line>
-            <line x1="3" y1="12" x2="3.01" y2="12"></line>
-            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
           </svg>
         </button>
-        <button id="btn-show-stats" class="btn-icon" title="Статистика">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="20" x2="18" y2="10"></line>
-            <line x1="12" y1="20" x2="12" y2="4"></line>
-            <line x1="6" y1="20" x2="6" y2="14"></line>
-          </svg>
-        </button>
-        <button id="btn-show-home" class="btn-icon" title="Настройки" style="display: none;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-            <polyline points="9 22 9 12 15 12 15 22"></polyline>
-          </svg>
-        </button>
+        <div class="nav-buttons" id="nav-buttons">
+          <button id="btn-show-lists" class="btn-icon" title="Мои наборы">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="8" y1="6" x2="21" y2="6"></line>
+              <line x1="8" y1="12" x2="21" y2="12"></line>
+              <line x1="8" y1="18" x2="21" y2="18"></line>
+              <line x1="3" y1="6" x2="3.01" y2="6"></line>
+              <line x1="3" y1="12" x2="3.01" y2="12"></line>
+              <line x1="3" y1="18" x2="3.01" y2="18"></line>
+            </svg>
+            <span class="nav-text">Мои наборы</span>
+          </button>
+          <button id="btn-show-stats" class="btn-icon" title="Статистика">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+            <span class="nav-text">Статистика</span>
+          </button>
+          <button id="btn-show-viewer" class="btn-icon" title="Просмотр темы">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <span class="nav-text">Просмотр темы</span>
+          </button>
+          <button id="btn-show-home" class="btn-icon" title="На главную">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <span class="nav-text">На главную</span>
+          </button>
+        </div>
       </div>
     </header>
 
@@ -210,12 +229,20 @@
               <div id="session-progress-bar" class="progress-bar"></div>
             </div>
           </div>
-          <button id="btn-exit-study" class="btn-icon" title="Завершить сессию">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button id="btn-edit-current-question" class="btn-icon" title="Редактировать вопрос/ответ">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+            </button>
+            <button id="btn-exit-study" class="btn-icon" title="Завершить сессию">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
         </div>
 
         <!-- Flipper Card Viewport -->
@@ -224,12 +251,7 @@
             
             <!-- Card Front -->
             <div class="card-face card-front">
-              <button class="btn-icon card-edit-btn" title="Редактировать вопрос/ответ" style="position: absolute; top: 1.25rem; left: 1.25rem; z-index: 10;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                  <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                </svg>
-              </button>
+
               <div id="card-starred" class="starred-badge" style="display: none;">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
@@ -242,12 +264,7 @@
 
             <!-- Card Back -->
             <div class="card-face card-back">
-              <button class="btn-icon card-edit-btn" title="Редактировать вопрос/ответ" style="position: absolute; top: 1.25rem; left: 1.25rem; z-index: 10;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                  <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                </svg>
-              </button>
+
               <div class="answer-section">
                 <!-- Short Answer -->
                 <div id="sec-short-ans">
@@ -468,7 +485,6 @@
         <p id="viewer-desc" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;"></p>
         
         <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
-          <input type="text" id="viewer-search" class="search-input" placeholder="Поиск по вопросам..." style="flex-grow: 1; min-width: 150px;">
           <button id="btn-viewer-toggle-all" class="btn-action" style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); white-space: nowrap; display: flex; align-items: center; gap: 0.25rem;">
             Свернуть все
           </button>
@@ -486,8 +502,16 @@
             + Вопрос
           </button>
         </div>
+      </div>
 
-        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+      <div class="panel" style="margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.75rem; padding: 1.25rem;">
+        <h3 style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.15rem;">Поиск и фильтрация</h3>
+        
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <input type="text" id="viewer-search" class="search-input" placeholder="Поиск по вопросам..." style="flex-grow: 1; min-width: 150px;">
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
           <select id="viewer-category-filter" class="select-control" style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
             <option value="all">Все разделы</option>
           </select>

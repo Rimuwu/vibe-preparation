@@ -10,13 +10,13 @@ window.addEventListener('error', (e) => {
 
 
 import { parseMarkdown } from './parser.js';
-import { 
-  getStats, 
-  recordAnswer, 
-  toggleDifficult, 
-  addAcceptedAnswer, 
-  getQuestionStats, 
-  getGlobalStats, 
+import {
+  getStats,
+  recordAnswer,
+  toggleDifficult,
+  addAcceptedAnswer,
+  getQuestionStats,
+  getGlobalStats,
   resetAllStats,
   exportProgressJSON,
   importProgressJSON,
@@ -49,8 +49,12 @@ const screenLists = document.getElementById('screen-lists');
 
 const btnShowStats = document.getElementById('btn-show-stats');
 const btnShowHome = document.getElementById('btn-show-home');
+const btnShowViewer = document.getElementById('btn-show-viewer');
+const btnMenuToggle = document.getElementById('btn-menu-toggle');
+const navButtons = document.getElementById('nav-buttons');
 const btnResetStats = document.getElementById('btn-reset-stats');
 const btnShareStats = document.getElementById('btn-share-stats');
+const btnEditCurrentQuestion = document.getElementById('btn-edit-current-question');
 
 const modulesList = document.getElementById('modules-list');
 const inputModuleName = document.getElementById('input-module-name');
@@ -227,7 +231,7 @@ function showModalConfirm(message, title = 'Подтверждение') {
 function showModalEditQuestion(q, isNew = false) {
   return new Promise((resolve) => {
     modalTitle.textContent = isNew ? 'Добавить вопрос' : 'Редактировать вопрос/ответ';
-    
+
     // Generate form
     modalBody.innerHTML = `
       <div class="form-group">
@@ -247,7 +251,7 @@ function showModalEditQuestion(q, isNew = false) {
         <textarea id="edit-q-detailed" class="text-control" style="min-height: 150px;">${q.detailedAnswer || ''}</textarea>
       </div>
     `;
-    
+
     modalBtnCancel.style.display = 'block';
     modalBtnCancel.textContent = 'Отмена';
     modalBtnOk.style.display = 'block';
@@ -269,12 +273,12 @@ function showModalEditQuestion(q, isNew = false) {
       const title = document.getElementById('edit-q-title').value.trim();
       const shortAnswer = document.getElementById('edit-q-short').value.trim();
       const detailedAnswer = document.getElementById('edit-q-detailed').value.trim();
-      
+
       if (!title) {
         showModalAlert('Заголовок вопроса не может быть пустым.');
         return;
       }
-      
+
       cleanUp({
         category: category || 'Общее',
         title,
@@ -305,7 +309,7 @@ async function loadQuestionsForModule(mod) {
     if (!resp.ok) throw new Error('Файл не найден');
     mdText = await resp.text();
   }
-  
+
   const questions = parseMarkdown(mdText);
   questions.forEach(q => {
     q.id = `${mod.id}_${q.id}`;
@@ -315,11 +319,11 @@ async function loadQuestionsForModule(mod) {
       Object.assign(q, overrides[q.id]);
     }
   });
-  
+
   // Append added questions
   const added = getAddedQuestions(mod.id);
   questions.push(...added);
-  
+
   return questions;
 }
 
@@ -328,7 +332,7 @@ function updateCustomModuleMd(moduleId) {
   if (mod && mod.isCustom) {
     const serialized = serializeQuestionsToMarkdown(dbQuestions, mod.name);
     mod.mdText = serialized;
-    
+
     // Save to localStorage custom modules list
     const customList = allModules.filter(m => m.isCustom);
     localStorage.setItem('vibe_prep_custom_modules', JSON.stringify(customList));
@@ -337,7 +341,7 @@ function updateCustomModuleMd(moduleId) {
 
 function serializeQuestionsToMarkdown(questions, moduleName) {
   let md = `# ${moduleName.toUpperCase()}\n\n`;
-  
+
   // Group by category
   const categories = {};
   questions.forEach(q => {
@@ -347,14 +351,14 @@ function serializeQuestionsToMarkdown(questions, moduleName) {
     }
     categories[cat].push(q);
   });
-  
+
   for (const catName in categories) {
     md += `## ${catName}\n\n`;
-    
+
     categories[catName].forEach(q => {
       const star = q.isStarred ? '[!] ' : '';
       md += `### ${star}${q.number}. ${q.title}\n`;
-      
+
       // If it's a multiple choice question
       if (q.type === 'choice' && q.choices && q.choices.length > 0) {
         q.choices.forEach(choice => {
@@ -362,7 +366,7 @@ function serializeQuestionsToMarkdown(questions, moduleName) {
           md += `- [${check}] ${choice.text}\n`;
         });
       }
-      
+
       if (q.shortAnswer) {
         if (q.shortAnswer.includes('\n')) {
           md += `* **Краткий ответ**:\n  ${q.shortAnswer.split('\n').join('\n  ')}\n`;
@@ -370,7 +374,7 @@ function serializeQuestionsToMarkdown(questions, moduleName) {
           md += `* **Краткий ответ**: ${q.shortAnswer}\n`;
         }
       }
-      
+
       if (q.detailedAnswer) {
         if (q.detailedAnswer.includes('\n')) {
           md += `* **Пояснение**:\n  ${q.detailedAnswer.split('\n').join('\n  ')}\n`;
@@ -378,11 +382,11 @@ function serializeQuestionsToMarkdown(questions, moduleName) {
           md += `* **Пояснение**: ${q.detailedAnswer}\n`;
         }
       }
-      
+
       md += `\n`;
     });
   }
-  
+
   return md;
 }
 
@@ -396,10 +400,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
 async function initApp() {
   setupEventListeners();
-  
+
   // 1. Load modules manifest and custom modules
   await loadModules();
-  
+
   // 2. Check for active session
   const savedSession = localStorage.getItem('vibe_prep_active_session');
   if (savedSession) {
@@ -409,17 +413,17 @@ async function initApp() {
         const mod = allModules.find(m => m.id === state.moduleId);
         if (mod) {
           activeModule = mod;
-          
+
           // Load questions for the active module using helper
           dbQuestions = await loadQuestionsForModule(activeModule);
-          
+
           fileLoaded = true;
           sessionQueue = state.sessionQueue;
           currentIndex = state.currentIndex;
           sessionCorrect = state.sessionCorrect;
           sessionAttempts = state.sessionAttempts;
           sessionAnswers = state.sessionAnswers || new Array(sessionQueue.length).fill(null);
-          
+
           // Restore settings
           if (state.settings) {
             selectCategory.value = state.settings.category || 'all';
@@ -430,13 +434,13 @@ async function initApp() {
               selectProgressFilter.value = state.settings.progressFilter || 'all';
             }
           }
-          
+
           populateCategories();
-          
+
           // Update details in dashboard in case they go back
           currentModuleTitle.textContent = activeModule.name;
           currentModuleDesc.textContent = activeModule.description || '';
-          
+
           switchScreen('study');
           loadCard(currentIndex);
           return;
@@ -447,7 +451,7 @@ async function initApp() {
       localStorage.removeItem('vibe_prep_active_session');
     }
   }
-  
+
   // 3. Check for selected active module
   const savedModuleId = localStorage.getItem('vibe_prep_active_module_id');
   if (savedModuleId) {
@@ -457,14 +461,14 @@ async function initApp() {
       return;
     }
   }
-  
+
   // Default: go to modules screen
   switchScreen('modules');
 }
 
 async function loadModules() {
   allModules = [];
-  
+
   // Load standard modules from manifest
   try {
     const resp = await fetch('modules/modules.json');
@@ -475,7 +479,7 @@ async function loadModules() {
   } catch (e) {
     console.warn('Could not load standard modules manifest', e);
   }
-  
+
   // Load custom modules from localStorage
   try {
     const custom = localStorage.getItem('vibe_prep_custom_modules');
@@ -485,32 +489,32 @@ async function loadModules() {
   } catch (e) {
     console.error('Failed to parse custom modules', e);
   }
-  
+
   renderModulesList();
 }
 
 function renderModulesList() {
   modulesList.innerHTML = '';
-  
+
   if (allModules.length === 0) {
     modulesList.innerHTML = '<div style="text-align:center; padding:1.5rem; color:var(--text-muted); font-size:0.9rem;">Нет доступных тем</div>';
     return;
   }
-  
+
   allModules.forEach(mod => {
     const card = document.createElement('div');
     card.className = 'module-card';
-    
+
     const header = document.createElement('div');
     card.appendChild(header); // Wait, this needs module-card-header styling class!
     header.className = 'module-card-header';
-    
+
     const title = document.createElement('h3');
     title.className = 'module-card-title';
     title.textContent = mod.name;
-    
+
     header.appendChild(title);
-    
+
     if (mod.isCustom) {
       const delBtn = document.createElement('button');
       delBtn.className = 'btn-module-delete';
@@ -529,28 +533,28 @@ function renderModulesList() {
       });
       header.appendChild(delBtn);
     }
-    
+
     const desc = document.createElement('p');
     desc.className = 'module-card-desc';
     desc.textContent = mod.description || 'Без описания';
-    
+
     const footer = document.createElement('div');
     footer.className = 'module-card-footer';
-    
+
     const typeLabel = document.createElement('span');
     typeLabel.className = 'brand-badge';
     typeLabel.style.fontSize = '0.7rem';
     typeLabel.textContent = mod.isCustom ? 'Пользовательская' : 'Стандартная';
-    
+
     footer.appendChild(typeLabel);
-    
+
     card.appendChild(desc);
     card.appendChild(footer);
-    
+
     card.addEventListener('click', () => {
       selectModule(mod);
     });
-    
+
     modulesList.appendChild(card);
   });
 }
@@ -558,19 +562,19 @@ function renderModulesList() {
 async function selectModule(mod) {
   activeModule = mod;
   localStorage.setItem('vibe_prep_active_module_id', mod.id);
-  
+
   // Set details in dashboard
   currentModuleTitle.textContent = mod.name;
   currentModuleDesc.textContent = mod.description || '';
-  
+
   // Load questions using helper
   try {
     dbQuestions = await loadQuestionsForModule(mod);
     fileLoaded = true;
-    
+
     // Populate category dropdown
     populateCategories();
-    
+
     switchScreen('dashboard');
   } catch (err) {
     showModalAlert(`Ошибка при загрузке темы: ${err.message}`);
@@ -580,7 +584,7 @@ async function selectModule(mod) {
 
 function populateCategories() {
   const categories = Array.from(new Set(dbQuestions.map(q => q.category || 'Общее')));
-  
+
   // Dashboard category select
   selectCategory.innerHTML = '<option value="all">Все вопросы</option>';
   categories.forEach(cat => {
@@ -620,13 +624,13 @@ function deleteCustomModule(id) {
       let list = JSON.parse(custom);
       list = list.filter(m => m.id !== id);
       localStorage.setItem('vibe_prep_custom_modules', JSON.stringify(list));
-      
+
       // If the deleted module was active, reset active module
       if (activeModule && activeModule.id === id) {
         activeModule = null;
         localStorage.removeItem('vibe_prep_active_module_id');
       }
-      
+
       loadModules();
     }
   } catch (e) {
@@ -637,7 +641,7 @@ function deleteCustomModule(id) {
 function handleCustomModuleFile(file) {
   const name = inputModuleName.value.trim();
   const desc = inputModuleDesc.value.trim();
-  
+
   const reader = new FileReader();
   reader.onload = async (e) => {
     try {
@@ -646,7 +650,7 @@ function handleCustomModuleFile(file) {
       if (questions.length === 0) {
         throw new Error('В файле не найдено корректных вопросов. Проверьте форматирование.');
       }
-      
+
       const newMod = {
         id: 'custom_' + Date.now(),
         name: name || file.name.replace(/\.md$/i, ''),
@@ -654,18 +658,18 @@ function handleCustomModuleFile(file) {
         mdText: mdText,
         isCustom: true
       };
-      
+
       const custom = localStorage.getItem('vibe_prep_custom_modules');
       const list = custom ? JSON.parse(custom) : [];
       list.push(newMod);
       localStorage.setItem('vibe_prep_custom_modules', JSON.stringify(list));
-      
+
       inputModuleName.value = '';
       inputModuleDesc.value = '';
       moduleDropzoneText.textContent = 'Нажмите или перетащите .md файл';
-      
+
       loadModules();
-      
+
       showModalAlert(`Тема "${newMod.name}" успешно загружена! (Вопросов: ${questions.length})`);
     } catch (err) {
       showModalAlert('Ошибка при разборе файла вопросов: ' + err.message);
@@ -698,7 +702,7 @@ function setupEventListeners() {
         viewerSortBy.value = 'number_asc';
         isAllExpanded = true;
         btnViewerToggleAll.textContent = 'Свернуть все';
-        
+
         // Trigger selection mode
         isSelectionMode = true;
         screenViewer.classList.add('select-mode-active');
@@ -713,7 +717,7 @@ function setupEventListeners() {
         selectedQuestionIds.clear();
         if (viewerSelectionCount) viewerSelectionCount.textContent = 'Выбрано вопросов: 0';
         if (viewerSelectionPanel) viewerSelectionPanel.style.display = 'flex';
-        
+
         renderViewerList();
       } else {
         showModalAlert('Пожалуйста, выберите тему для подготовки на главном экране, откройте просмотр темы и соберите набор вопросов.').then(() => {
@@ -733,7 +737,7 @@ function setupEventListeners() {
     statsSearch.value = '';
     renderStatsTable();
   });
-  
+
   btnShowHome.addEventListener('click', () => {
     if (activeModule) {
       switchScreen('dashboard');
@@ -743,10 +747,17 @@ function setupEventListeners() {
   });
 
   document.getElementById('brand-home').addEventListener('click', () => {
-    if (activeModule) {
-      switchScreen('dashboard');
+    const isMainScreen = (screenModules && screenModules.classList.contains('active')) || 
+                         (screenDashboard && screenDashboard.classList.contains('active'));
+    
+    if (isMainScreen) {
+      window.open('https://github.com/Rimuwu/vibe-preparation', '_blank');
     } else {
-      switchScreen('modules');
+      if (activeModule) {
+        switchScreen('dashboard');
+      } else {
+        switchScreen('modules');
+      }
     }
   });
 
@@ -808,18 +819,18 @@ function setupEventListeners() {
         showModalAlert('Пожалуйста, выберите хотя бы один вопрос.');
         return;
       }
-      
+
       const defaultListName = `Набор: ${activeModule.name} (${selectedQuestionIds.size} вопр.)`;
       const listName = await showModalPrompt('Введите название для нового списка вопросов:', defaultListName, 'Новый список');
       if (listName === null) {
         return;
       }
-      
+
       const name = listName.trim() || defaultListName;
       try {
         const raw = localStorage.getItem('vibe_prep_custom_lists');
         const lists = raw ? JSON.parse(raw) : [];
-        
+
         const newList = {
           id: 'list_' + Date.now(),
           name: name,
@@ -828,10 +839,10 @@ function setupEventListeners() {
           questionIds: Array.from(selectedQuestionIds),
           created: Date.now()
         };
-        
+
         lists.push(newList);
         localStorage.setItem('vibe_prep_custom_lists', JSON.stringify(lists));
-        
+
         deactivateSelectionMode();
         showModalAlert(`Набор вопросов "${name}" успешно создан!`);
         switchScreen('lists');
@@ -846,7 +857,7 @@ function setupEventListeners() {
   viewerCorrectFilter.addEventListener('change', renderViewerList);
   viewerDifficultyFilter.addEventListener('change', renderViewerList);
   viewerSortBy.addEventListener('change', renderViewerList);
-  
+
   statsSearch.addEventListener('input', renderStatsTable);
   statsCategoryFilter.addEventListener('change', renderStatsTable);
   statsCorrectFilter.addEventListener('change', renderStatsTable);
@@ -856,7 +867,7 @@ function setupEventListeners() {
   btnViewerToggleAll.addEventListener('click', () => {
     isAllExpanded = !isAllExpanded;
     btnViewerToggleAll.textContent = isAllExpanded ? 'Свернуть все' : 'Развернуть все';
-    
+
     const cards = viewerQuestionsList.querySelectorAll('.viewer-card');
     cards.forEach(card => {
       const isExpanded = card.classList.contains('expanded');
@@ -868,7 +879,7 @@ function setupEventListeners() {
 
   // Custom module file drag and drop
   moduleDropzone.addEventListener('click', () => moduleFileInput.click());
-  
+
   moduleFileInput.addEventListener('change', (e) => {
     const file = e.target.files[0];
     if (file) handleCustomModuleFile(file);
@@ -898,7 +909,7 @@ function setupEventListeners() {
       showModalAlert('Пожалуйста, введите название темы.');
       return;
     }
-    
+
     const newMod = {
       id: 'custom_' + Date.now(),
       name: name,
@@ -906,15 +917,15 @@ function setupEventListeners() {
       mdText: `# ${name}\n\n## Общее\n`,
       isCustom: true
     };
-    
+
     const custom = localStorage.getItem('vibe_prep_custom_modules');
     const list = custom ? JSON.parse(custom) : [];
     list.push(newMod);
     localStorage.setItem('vibe_prep_custom_modules', JSON.stringify(list));
-    
+
     inputModuleName.value = '';
     inputModuleDesc.value = '';
-    
+
     await loadModules();
     showModalAlert(`Тема "${newMod.name}" успешно создана! Вы можете перейти в просмотр темы, чтобы добавить вопросы.`);
   });
@@ -956,11 +967,11 @@ function setupEventListeners() {
       Object.assign(newQ, updated);
       dbQuestions.push(newQ);
       saveAddedQuestion(activeModule.id, newQ);
-      
+
       if (activeModule.isCustom) {
         updateCustomModuleMd(activeModule.id);
       }
-      
+
       populateCategories();
       renderViewerList();
       showModalAlert('Новый вопрос успешно добавлен!');
@@ -969,11 +980,13 @@ function setupEventListeners() {
 
   // Session Start / End
   btnStartSession.addEventListener('click', startStudySession);
-  btnExitStudy.addEventListener('click', () => {
-    clearActiveSession();
-    switchScreen('dashboard');
+  btnExitStudy.addEventListener('click', async () => {
+    if (await showModalConfirm('Вы уверены, что хотите завершить сессию подготовки? Текущий прогресс сессии будет сброшен.')) {
+      clearActiveSession();
+      switchScreen('dashboard');
+    }
   });
-  
+
   // Card interaction
   studyCard.addEventListener('click', (e) => {
     if (e.target.closest('button') || e.target.closest('textarea') || e.target.closest('a') || e.target.closest('.options-grid') || e.target.closest('.text-input-group')) {
@@ -982,10 +995,9 @@ function setupEventListeners() {
     flipCard();
   });
 
-  // Card edit buttons click listeners
-  document.querySelectorAll('.card-edit-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation(); // prevent card flip
+  // Edit current question/answer
+  if (btnEditCurrentQuestion) {
+    btnEditCurrentQuestion.addEventListener('click', async () => {
       const q = sessionQueue[currentIndex];
       if (!q) return;
 
@@ -1002,7 +1014,7 @@ function setupEventListeners() {
         showModalAlert('Вопрос успешно сохранен!');
       }
     });
-  });
+  }
 
   // Study evaluation actions
   btnCorrect.addEventListener('click', () => recordSessionProgress(true));
@@ -1030,45 +1042,99 @@ function setupEventListeners() {
 
   // Keyboard Shortcuts (PC)
   document.addEventListener('keydown', handleKeyboardShortcuts);
+
+  // Close modal when clicking on the overlay (outside the content area)
+  customModal.addEventListener('click', (e) => {
+    if (e.target === customModal) {
+      modalClose.click();
+    }
+  });
+
+  // Show active module viewer screen from header navigation
+  if (btnShowViewer) {
+    btnShowViewer.addEventListener('click', () => {
+      if (!activeModule) {
+        showModalAlert('Пожалуйста, сначала выберите тему на главном экране.');
+        return;
+      }
+
+      switchScreen('viewer');
+      viewerTitle.textContent = `Просмотр темы: ${activeModule.name}`;
+      viewerDesc.textContent = activeModule.description || '';
+      viewerSearch.value = '';
+      viewerCategoryFilter.value = 'all';
+      viewerCorrectFilter.value = 'all';
+      viewerDifficultyFilter.value = 'all';
+      viewerSortBy.value = 'number_asc';
+      isAllExpanded = true;
+      btnViewerToggleAll.textContent = 'Свернуть все';
+      renderViewerList();
+
+      if (navButtons) navButtons.classList.remove('active');
+    });
+  }
+
+  // Toggle burger menu on mobile
+  if (btnMenuToggle && navButtons) {
+    btnMenuToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      navButtons.classList.toggle('active');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!navButtons.contains(e.target) && e.target !== btnMenuToggle) {
+        navButtons.classList.remove('active');
+      }
+    });
+  }
+
+  // Auto-close mobile burger menu when other top navigation buttons are clicked
+  if (navButtons) {
+    const navBtnElements = navButtons.querySelectorAll('button');
+    navBtnElements.forEach(btn => {
+      if (btn.id !== 'btn-show-viewer') {
+        btn.addEventListener('click', () => {
+          navButtons.classList.remove('active');
+        });
+      }
+    });
+  }
 }
 
 
 function switchScreen(screenName) {
   console.log(`[Preparation.vibe] switchScreen: switching to "${screenName}"`);
-  
+
+  // Clear study session when navigating away from the study screen
+  if (screenStudy && screenStudy.classList.contains('active') && screenName !== 'study') {
+    clearActiveSession();
+  }
+
   if (screenModules) screenModules.classList.remove('active');
   if (screenDashboard) screenDashboard.classList.remove('active');
   if (screenStudy) screenStudy.classList.remove('active');
   if (screenStats) screenStats.classList.remove('active');
   if (screenViewer) screenViewer.classList.remove('active');
   if (screenLists) screenLists.classList.remove('active');
-  
-  if (btnShowHome) btnShowHome.style.display = 'none';
-  if (btnShowStats) btnShowStats.style.display = 'none';
 
   if (screenName === 'modules') {
     if (screenModules) screenModules.classList.add('active');
     console.log('[Preparation.vibe] screenModules activated');
   } else if (screenName === 'dashboard') {
     if (screenDashboard) screenDashboard.classList.add('active');
-    if (btnShowStats) btnShowStats.style.display = 'flex';
     console.log('[Preparation.vibe] screenDashboard activated');
   } else if (screenName === 'study') {
     if (screenStudy) screenStudy.classList.add('active');
-    if (btnShowHome) btnShowHome.style.display = 'flex';
     console.log('[Preparation.vibe] screenStudy activated');
   } else if (screenName === 'stats') {
     if (screenStats) screenStats.classList.add('active');
-    if (btnShowHome) btnShowHome.style.display = 'flex';
     updateGlobalStatsUI();
     console.log('[Preparation.vibe] screenStats activated');
   } else if (screenName === 'viewer') {
     if (screenViewer) screenViewer.classList.add('active');
-    if (btnShowHome) btnShowHome.style.display = 'flex';
     console.log('[Preparation.vibe] screenViewer activated');
   } else if (screenName === 'lists') {
     if (screenLists) screenLists.classList.add('active');
-    if (btnShowHome) btnShowHome.style.display = 'flex';
     console.log('[Preparation.vibe] screenLists activated. Rendering lists...');
     renderListsScreen();
   } else {
@@ -1094,7 +1160,7 @@ function startStudySession() {
   const algorithm = selectAlgorithm.value;
   const onlyDifficult = chkOnlyDifficult.checked;
   const progressFilter = selectProgressFilter.value;
-  
+
   sessionQueue = prepareSession(dbQuestions, category, algorithm, onlyDifficult, progressFilter);
   if (sessionQueue.length === 0) {
     if (onlyDifficult) {
@@ -1110,7 +1176,7 @@ function startStudySession() {
   sessionCorrect = 0;
   sessionAttempts = 0;
   sessionAnswers = new Array(sessionQueue.length).fill(null);
-  
+
   switchScreen('study');
   loadCard(currentIndex);
   saveActiveSession();
@@ -1142,9 +1208,9 @@ function clearActiveSession() {
 
 function goToPrevQuestion() {
   if (currentIndex <= 0) return;
-  
+
   currentIndex--;
-  
+
   const prevAnswer = sessionAnswers[currentIndex];
   if (prevAnswer !== null) {
     sessionAttempts--;
@@ -1153,7 +1219,7 @@ function goToPrevQuestion() {
     }
     sessionAnswers[currentIndex] = null;
   }
-  
+
   loadCard(currentIndex);
   saveActiveSession();
 }
@@ -1174,13 +1240,15 @@ function loadCard(index) {
   cardFrontMeta.textContent = `${q.category} • Вопрос ${q.number}`;
   cardQuestionText.textContent = q.title;
 
-  if (q.isStarred || qStats.isDifficult) {
+  const isDiff = qStats.isDifficult !== undefined ? qStats.isDifficult : q.isStarred;
+
+  if (isDiff) {
     cardStarred.style.display = 'block';
   } else {
     cardStarred.style.display = 'none';
   }
 
-  if (qStats.isDifficult) {
+  if (isDiff) {
     btnDifficult.classList.add('active');
     btnDifficult.querySelector('span').textContent = 'Сложный вопрос!';
   } else {
@@ -1188,8 +1256,18 @@ function loadCard(index) {
     btnDifficult.querySelector('span').textContent = 'Пометить сложным';
   }
 
-  cardShortAnswer.innerHTML = q.shortAnswer ? marked.parse(q.shortAnswer) : '<em>Отсутствует</em>';
-  cardDetailedAnswer.innerHTML = q.detailedAnswer ? marked.parse(q.detailedAnswer) : '<em>Отсутствует</em>';
+  // Clear answers immediately to avoid spoilers during flip back transition
+  cardShortAnswer.innerHTML = '';
+  cardDetailedAnswer.innerHTML = '';
+
+  // Populate answers after flip transition is complete (invisible to user)
+  setTimeout(() => {
+    if (sessionQueue[currentIndex] && sessionQueue[currentIndex].id === q.id) {
+      cardShortAnswer.innerHTML = q.shortAnswer ? marked.parse(q.shortAnswer) : '<em>Отсутствует</em>';
+      cardDetailedAnswer.innerHTML = q.detailedAnswer ? marked.parse(q.detailedAnswer) : '<em>Отсутствует</em>';
+      Prism.highlightAllUnder(studyCard);
+    }
+  }, 400);
 
   setTimeout(() => {
     Prism.highlightAllUnder(studyCard);
@@ -1204,7 +1282,7 @@ function setupQtypeUI(q, qType) {
   inputContainer.style.display = 'none';
   document.getElementById('free-input-container').style.display = 'none';
   btnAcceptAlternative.style.display = 'none';
-  
+
   btnCorrect.disabled = false;
   btnIncorrect.disabled = false;
 
@@ -1236,10 +1314,9 @@ function toggleCardDifficult() {
   const q = sessionQueue[currentIndex];
   if (!q) return;
 
-  const isDiff = toggleDifficult(q.id);
-  
-  const qStats = getQuestionStats(q.id);
-  if (q.isStarred || isDiff) {
+  const isDiff = toggleDifficult(q.id, q.isStarred);
+
+  if (isDiff) {
     cardStarred.style.display = 'block';
   } else {
     cardStarred.style.display = 'none';
@@ -1252,7 +1329,7 @@ function toggleCardDifficult() {
     btnDifficult.classList.remove('active');
     btnDifficult.querySelector('span').textContent = 'Пометить сложным';
   }
-  
+
   saveActiveSession();
 }
 
@@ -1261,7 +1338,7 @@ function recordSessionProgress(isCorrect) {
   if (!q) return;
 
   recordAnswer(q.id, isCorrect);
-  
+
   sessionAnswers[currentIndex] = isCorrect;
   sessionAttempts++;
   if (isCorrect) {
@@ -1339,7 +1416,7 @@ function generateMultipleChoiceOptions(q) {
     const btn = document.createElement('button');
     btn.className = 'option-btn';
     btn.textContent = opt.text;
-    
+
     btn.addEventListener('click', () => {
       // Disable other choices
       const allBtns = choiceContainer.querySelectorAll('.option-btn');
@@ -1399,18 +1476,18 @@ function evaluateTypedAnswer() {
 
   inputFeedback.style.display = 'block';
   btnSubmitAnswer.disabled = true;
-  
+
   if (isMatched) {
     inputFeedback.textContent = '🎉 Верно! Отличный результат.';
     inputFeedback.className = 'input-feedback correct';
     btnCorrect.disabled = false;
     btnIncorrect.disabled = true;
-    
+
     // Auto record correct answer
     recordAnswer(q.id, true);
     sessionCorrect++;
     sessionAttempts++;
-    
+
     setTimeout(() => {
       if (!isCardFlipped) flipCard();
     }, 1200);
@@ -1419,14 +1496,14 @@ function evaluateTypedAnswer() {
     inputFeedback.className = 'input-feedback incorrect';
     btnCorrect.disabled = true;
     btnIncorrect.disabled = false;
-    
+
     // Show manual acceptance button
     btnAcceptAlternative.style.display = 'block';
 
     // Auto record incorrect answer (user can override with manual button)
     recordAnswer(q.id, false);
     sessionAttempts++;
-    
+
     setTimeout(() => {
       if (!isCardFlipped) flipCard();
     }, 1500);
@@ -1453,7 +1530,7 @@ function acceptAlternativeAnswer() {
 
   // Correct session statistics
   sessionCorrect++;
-  
+
   // Update feedback UI
   inputFeedback.textContent = '🎉 Ответ зачтен и добавлен в базу правильных альтернатив!';
   inputFeedback.className = 'input-feedback correct';
@@ -1470,15 +1547,15 @@ function fuzzyMatch(typed, correct, acceptedList = []) {
       .replace(/\s+/g, " ")                           // normalize spaces
       .trim();
   };
-  
+
   const cleanTyped = clean(typed);
   const cleanCorrect = clean(correct);
-  
+
   if (!cleanTyped) return false;
-  
+
   // Check exact cleaned match
   if (cleanTyped === cleanCorrect) return true;
-  
+
   // Check custom accepted answers
   for (const accepted of acceptedList) {
     if (cleanTyped === clean(accepted)) return true;
@@ -1494,14 +1571,14 @@ function fuzzyMatch(typed, correct, acceptedList = []) {
       }
     }
   }
-  
+
   // Levenshtein distance for typings with minor typos
   const dist = levenshteinDistance(cleanTyped, cleanCorrect);
   const maxAllowedDist = Math.max(1, Math.floor(cleanCorrect.length * 0.15)); // 15% length tolerance
   if (dist <= maxAllowedDist) {
     return true;
   }
-  
+
   return false;
 }
 
@@ -1542,10 +1619,10 @@ function updateProgressUI() {
   const total = sessionQueue.length;
   const currentNum = currentIndex + 1;
   const pct = total > 0 ? (currentIndex / total) * 100 : 0;
-  
+
   progressText.textContent = `Карточка ${Math.min(currentNum, total)} из ${total}`;
   progressBar.style.width = `${pct}%`;
-  
+
   const accuracy = sessionAttempts > 0 ? Math.round((sessionCorrect / sessionAttempts) * 100) : 0;
   accuracyText.textContent = `Правильно: ${accuracy}%`;
 }
@@ -1560,16 +1637,16 @@ function updateGlobalStatsUI() {
 
 function sortQuestions(questions, sortBy, stats) {
   return [...questions].sort((a, b) => {
-    const statA = stats[a.id] || { correctCount: 0, incorrectCount: 0, isDifficult: false };
-    const statB = stats[b.id] || { correctCount: 0, incorrectCount: 0, isDifficult: false };
+    const statA = stats[a.id] || { correctCount: 0, incorrectCount: 0 };
+    const statB = stats[b.id] || { correctCount: 0, incorrectCount: 0 };
 
     const totalA = statA.correctCount + statA.incorrectCount;
     const totalB = statB.correctCount + statB.incorrectCount;
     const accA = totalA > 0 ? (statA.correctCount / totalA) : 0;
     const accB = totalB > 0 ? (statB.correctCount / totalB) : 0;
 
-    const isDiffA = statA.isDifficult || a.isStarred ? 1 : 0;
-    const isDiffB = statB.isDifficult || b.isStarred ? 1 : 0;
+    const isDiffA = (statA.isDifficult !== undefined ? statA.isDifficult : a.isStarred) ? 1 : 0;
+    const isDiffB = (statB.isDifficult !== undefined ? statB.isDifficult : b.isStarred) ? 1 : 0;
 
     switch (sortBy) {
       case 'number_asc':
@@ -1617,7 +1694,7 @@ function renderStatsTable() {
     // 2. Category Filter
     if (categoryFilter !== 'all' && q.category !== categoryFilter) return false;
 
-    const qStat = stats[q.id] || { correctCount: 0, incorrectCount: 0, isDifficult: false };
+    const qStat = stats[q.id] || { correctCount: 0, incorrectCount: 0 };
     const hasCorrect = qStat.correctCount > 0;
     const hasIncorrect = qStat.incorrectCount > 0;
     const isUnanswered = qStat.correctCount === 0 && qStat.incorrectCount === 0;
@@ -1628,7 +1705,7 @@ function renderStatsTable() {
     if (correctFilter === 'unanswered' && !isUnanswered) return false;
 
     // 4. Difficulty Filter
-    const isDiff = qStat.isDifficult || q.isStarred;
+    const isDiff = qStat.isDifficult !== undefined ? qStat.isDifficult : q.isStarred;
     if (diffFilter === 'difficult' && !isDiff) return false;
     if (diffFilter === 'normal' && isDiff) return false;
 
@@ -1644,7 +1721,7 @@ function renderStatsTable() {
   }
 
   filtered.forEach(q => {
-    const qStat = stats[q.id] || { correctCount: 0, incorrectCount: 0, isDifficult: false };
+    const qStat = stats[q.id] || { correctCount: 0, incorrectCount: 0 };
     const total = qStat.correctCount + qStat.incorrectCount;
     const accuracy = total > 0 ? Math.round((qStat.correctCount / total) * 100) : 0;
 
@@ -1683,7 +1760,8 @@ function renderStatsTable() {
       meta.appendChild(bIncorrect);
     }
 
-    if (qStat.isDifficult || q.isStarred) {
+    const isDiff = qStat.isDifficult !== undefined ? qStat.isDifficult : q.isStarred;
+    if (isDiff) {
       const bDiff = document.createElement('span');
       bDiff.className = 'badge-stat difficult';
       bDiff.textContent = '★ Сложный';
@@ -1703,7 +1781,7 @@ function renderStatsTable() {
       sessionCorrect = 0;
       sessionAttempts = 0;
       sessionAnswers = new Array(sessionQueue.length).fill(null);
-      
+
       selectCategory.value = 'all';
       selectAlgorithm.value = 'sequential';
       chkOnlyDifficult.checked = false;
@@ -1761,7 +1839,7 @@ function importProgress(e) {
 function handleKeyboardShortcuts(e) {
   // Only intercept events when study screen is active
   if (!screenStudy.classList.contains('active')) return;
-  
+
   // Disable keyboard shortcuts when user typing in text area
   if (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT') {
     // Let Enter trigger submit in text input
@@ -1832,7 +1910,7 @@ function renderViewerList() {
     if (correctFilter === 'unanswered' && !isUnanswered) return false;
 
     // 4. Difficulty Filter
-    const isDiff = qStats.isDifficult || q.isStarred;
+    const isDiff = qStats.isDifficult !== undefined ? qStats.isDifficult : q.isStarred;
     if (diffFilter === 'difficult' && !isDiff) return false;
     if (diffFilter === 'normal' && isDiff) return false;
 
@@ -1863,6 +1941,10 @@ function renderViewerList() {
     const header = document.createElement('div');
     header.className = 'viewer-card-header';
 
+    const titleRow = document.createElement('div');
+    titleRow.className = 'viewer-card-title-row';
+    header.appendChild(titleRow);
+
     // Checkbox for selection mode
     const chk = document.createElement('input');
     chk.type = 'checkbox';
@@ -1872,27 +1954,22 @@ function renderViewerList() {
       e.stopPropagation();
       toggleQuestionSelection(q.id, chk.checked, card);
     });
-    header.appendChild(chk);
-
-    const titleGroup = document.createElement('div');
-    titleGroup.className = 'viewer-card-title-group';
-
-    const categoryBadge = document.createElement('span');
-    categoryBadge.className = 'brand-badge';
-    categoryBadge.style.fontSize = '0.7rem';
-    categoryBadge.style.marginBottom = '0.35rem';
-    categoryBadge.style.display = 'inline-block';
-    categoryBadge.textContent = q.category;
+    titleRow.appendChild(chk);
 
     const title = document.createElement('h3');
     title.className = 'viewer-card-title';
     title.textContent = `${q.number}. ${q.title}`;
-
-    titleGroup.appendChild(categoryBadge);
-    titleGroup.appendChild(title);
+    titleRow.appendChild(title);
 
     const meta = document.createElement('div');
     meta.className = 'viewer-card-meta';
+
+    // Category badge goes to the meta row now
+    const categoryBadge = document.createElement('span');
+    categoryBadge.className = 'brand-badge';
+    categoryBadge.style.fontSize = '0.75rem';
+    categoryBadge.textContent = q.category;
+    meta.appendChild(categoryBadge);
 
     // Accuracy badge
     const accuracyBadge = document.createElement('span');
@@ -1906,27 +1983,28 @@ function renderViewerList() {
 
     // Difficulty star toggle button
     const starBtn = document.createElement('button');
-    starBtn.className = `viewer-star-btn ${qStats.isDifficult || q.isStarred ? 'active' : ''}`;
-    starBtn.title = qStats.isDifficult || q.isStarred ? 'Сложный вопрос!' : 'Пометить сложным';
+    const isDiff = qStats.isDifficult !== undefined ? qStats.isDifficult : q.isStarred;
+    starBtn.className = `viewer-star-btn ${isDiff ? 'active' : ''}`;
+    starBtn.title = isDiff ? 'Сложный вопрос!' : 'Пометить сложным';
     starBtn.innerHTML = `
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="${qStats.isDifficult || q.isStarred ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="${isDiff ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
       </svg>
     `;
 
     starBtn.addEventListener('click', (e) => {
       e.stopPropagation(); // prevent card toggling
-      const isDiff = toggleDifficult(q.id);
-      qStats.isDifficult = isDiff;
-      
+      const isDiffVal = toggleDifficult(q.id, q.isStarred);
+      qStats.isDifficult = isDiffVal;
+
       // Update star button state
-      starBtn.className = `viewer-star-btn ${isDiff || q.isStarred ? 'active' : ''}`;
-      starBtn.title = isDiff || q.isStarred ? 'Сложный вопрос!' : 'Пометить сложным';
+      starBtn.className = `viewer-star-btn ${isDiffVal ? 'active' : ''}`;
+      starBtn.title = isDiffVal ? 'Сложный вопрос!' : 'Пометить сложным';
       const svg = starBtn.querySelector('svg');
       if (svg) {
-        svg.setAttribute('fill', isDiff || q.isStarred ? 'currentColor' : 'none');
+        svg.setAttribute('fill', isDiffVal ? 'currentColor' : 'none');
       }
-      
+
       // Update global stats UI
       updateGlobalStatsUI();
     });
@@ -1947,11 +2025,11 @@ function renderViewerList() {
       if (updated) {
         Object.assign(q, updated);
         saveQuestionEdit(activeModule.id, q.id, updated);
-        
+
         if (activeModule.isCustom) {
           updateCustomModuleMd(activeModule.id);
         }
-        
+
         populateCategories();
         renderViewerList();
         showModalAlert('Вопрос успешно сохранен!');
@@ -1967,18 +2045,21 @@ function renderViewerList() {
       </svg>
     `;
 
-    meta.appendChild(accuracyBadge);
-    meta.appendChild(starBtn);
-    meta.appendChild(editBtn);
-    meta.appendChild(toggleIcon);
+    const metaRight = document.createElement('div');
+    metaRight.className = 'viewer-card-meta-right';
+    metaRight.appendChild(accuracyBadge);
+    metaRight.appendChild(starBtn);
+    metaRight.appendChild(editBtn);
+    metaRight.appendChild(toggleIcon);
 
-    header.appendChild(titleGroup);
+    meta.appendChild(metaRight);
+
     header.appendChild(meta);
 
     // Body
     const body = document.createElement('div');
     body.className = 'viewer-card-body';
-    
+
     const bodySection = document.createElement('div');
     bodySection.className = 'viewer-card-body-section';
 
@@ -2163,7 +2244,7 @@ function renderListsScreen() {
     return;
   }
   container.innerHTML = '';
-  
+
   let lists = [];
   try {
     const raw = localStorage.getItem('vibe_prep_custom_lists');
@@ -2172,10 +2253,10 @@ function renderListsScreen() {
   } catch (e) {
     console.error('Failed to load custom lists', e);
   }
-  
+
   console.log('Parsed custom lists count:', Array.isArray(lists) ? lists.length : 'not an array');
 
-  
+
   if (!Array.isArray(lists) || lists.length === 0) {
     container.innerHTML = `
       <div style="text-align:center; padding:2rem 1.5rem; color:var(--text-muted); font-size:0.95rem;">
@@ -2185,7 +2266,7 @@ function renderListsScreen() {
     `;
     return;
   }
-  
+
   lists.forEach(list => {
     try {
       if (!list || typeof list !== 'object') return;
@@ -2193,25 +2274,25 @@ function renderListsScreen() {
       const card = document.createElement('div');
       card.className = 'list-card';
       card.dataset.id = list.id || '';
-      
+
       const header = document.createElement('div');
       header.className = 'list-card-header';
-      
+
       const titleGroup = document.createElement('div');
       titleGroup.className = 'list-card-title-group';
-      
+
       const title = document.createElement('h3');
       title.className = 'list-card-title';
       title.textContent = list.name || 'Без названия';
-      
+
       const subtitle = document.createElement('span');
       subtitle.className = 'list-card-subtitle';
       const count = (list.questionIds || []).length;
       subtitle.textContent = `Тема: ${list.moduleName || 'Неизвестно'} • Вопросов: ${count}`;
-      
+
       titleGroup.appendChild(title);
       titleGroup.appendChild(subtitle);
-      
+
       const delBtn = document.createElement('button');
       delBtn.className = 'btn-module-delete';
       delBtn.title = 'Удалить набор';
@@ -2227,13 +2308,13 @@ function renderListsScreen() {
           deleteCustomList(list.id);
         }
       });
-      
+
       header.appendChild(titleGroup);
       header.appendChild(delBtn);
-      
+
       const actions = document.createElement('div');
       actions.className = 'list-card-actions';
-      
+
       const solveBtn = document.createElement('button');
       solveBtn.className = 'btn-primary';
       solveBtn.style.padding = '0.5rem 1.25rem';
@@ -2248,12 +2329,12 @@ function renderListsScreen() {
       solveBtn.addEventListener('click', () => {
         startCustomListSession(list);
       });
-      
+
       actions.appendChild(solveBtn);
-      
+
       card.appendChild(header);
       card.appendChild(actions);
-      
+
       container.appendChild(card);
     } catch (err) {
       console.error('Error rendering individual list card:', err, list);
@@ -2285,32 +2366,32 @@ async function startCustomListSession(list) {
     showModalAlert('Тема, к которой относится этот набор, больше не существует.');
     return;
   }
-  
+
   try {
     dbQuestions = await loadQuestionsForModule(mod);
     fileLoaded = true;
     activeModule = mod;
     localStorage.setItem('vibe_prep_active_module_id', mod.id);
     populateCategories();
-    
+
     const questionIds = list.questionIds || [];
     const filteredQuestions = dbQuestions.filter(q => questionIds.includes(q.id));
     if (filteredQuestions.length === 0) {
       showModalAlert('В этом наборе не найдено подходящих вопросов. Возможно, они были удалены из темы.');
       return;
     }
-    
+
     sessionQueue = filteredQuestions;
     currentIndex = 0;
     sessionCorrect = 0;
     sessionAttempts = 0;
     sessionAnswers = new Array(sessionQueue.length).fill(null);
-    
+
     selectCategory.value = 'all';
     selectAlgorithm.value = 'sequential';
     if (selectProgressFilter) selectProgressFilter.value = 'all';
     chkOnlyDifficult.checked = false;
-    
+
     switchScreen('study');
     loadCard(currentIndex);
     saveActiveSession();
@@ -2324,20 +2405,20 @@ function generateStatsShareCard() {
     showModalAlert('Сначала выберите тему для подготовки.');
     return;
   }
-  
+
   const global = getGlobalStats(dbQuestions);
-  
+
   const canvas = document.createElement('canvas');
   canvas.width = 1200;
   canvas.height = 900;
   const ctx = canvas.getContext('2d');
-  
+
   const grad = ctx.createLinearGradient(0, 0, 1200, 900);
   grad.addColorStop(0, '#121212');
   grad.addColorStop(1, '#1e1f20');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, 1200, 900);
-  
+
   ctx.strokeStyle = 'rgba(138, 180, 248, 0.03)';
   ctx.lineWidth = 2;
   for (let i = 0; i < 1200; i += 60) {
@@ -2352,13 +2433,13 @@ function generateStatsShareCard() {
     ctx.lineTo(1200, j);
     ctx.stroke();
   }
-  
+
   const glow1 = ctx.createRadialGradient(200, 200, 0, 200, 200, 300);
   glow1.addColorStop(0, 'rgba(138, 180, 248, 0.08)');
   glow1.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = glow1;
   ctx.fillRect(0, 0, 1200, 900);
-  
+
   const glow2 = ctx.createRadialGradient(1000, 700, 0, 1000, 700, 300);
   glow2.addColorStop(0, 'rgba(129, 201, 149, 0.06)');
   glow2.addColorStop(1, 'rgba(0,0,0,0)');
@@ -2368,10 +2449,10 @@ function generateStatsShareCard() {
   ctx.strokeStyle = '#3c4043';
   ctx.lineWidth = 6;
   ctx.strokeRect(30, 30, 1140, 840);
-  
+
   ctx.fillStyle = '#8ab4f8';
   ctx.fillRect(30, 30, 12, 840);
-  
+
   ctx.font = 'bold 36px Roboto, sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'left';
@@ -2379,7 +2460,7 @@ function generateStatsShareCard() {
   const logoText = 'Preparation.vibe';
   ctx.fillText(logoText, 80, 100);
   const logoWidth = ctx.measureText(logoText).width;
-  
+
   ctx.font = 'bold 20px Roboto, sans-serif';
   ctx.fillStyle = '#8ab4f8';
   ctx.strokeStyle = 'rgba(138, 180, 248, 0.3)';
@@ -2400,43 +2481,43 @@ function generateStatsShareCard() {
   ctx.fillStyle = '#8ab4f8';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('AS1', badgeX + badgeW/2, badgeY + badgeH/2);
-  
+  ctx.fillText('AS1', badgeX + badgeW / 2, badgeY + badgeH / 2);
+
   ctx.textAlign = 'right';
   ctx.font = '30px Roboto, sans-serif';
   ctx.fillStyle = '#9e9e9e';
   const dateStr = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
   ctx.fillText(dateStr, 1130, 96);
-  
+
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = '#9e9e9e';
   ctx.font = '30px Roboto, sans-serif';
   ctx.fillText('ТЕМА ПОДГОТОВКИ', 80, 200);
-  
+
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 52px Roboto, sans-serif';
   const moduleTitle = activeModule.name;
   wrapText(ctx, moduleTitle, 80, 265, 1040, 64);
-  
+
   ctx.strokeStyle = 'rgba(60, 64, 67, 0.8)';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(80, 370);
   ctx.lineTo(1120, 370);
   ctx.stroke();
-  
+
   const completionPct = global.totalQuestions > 0 ? Math.round((global.answeredCount / global.totalQuestions) * 100) : 0;
   const ringX = 300;
   const ringY = 620;
   const radius = 150;
-  
+
   ctx.strokeStyle = '#2d2e30';
   ctx.lineWidth = 26;
   ctx.beginPath();
   ctx.arc(ringX, ringY, radius, 0, Math.PI * 2);
   ctx.stroke();
-  
+
   ctx.strokeStyle = '#81c995';
   ctx.lineWidth = 26;
   ctx.lineCap = 'round';
@@ -2445,41 +2526,41 @@ function generateStatsShareCard() {
   const endAngle = startAngle + (Math.PI * 2 * (completionPct / 100));
   ctx.arc(ringX, ringY, radius, startAngle, endAngle);
   ctx.stroke();
-  
+
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 78px Roboto, sans-serif';
   ctx.fillText(`${completionPct}%`, ringX, ringY - 15);
-  
+
   ctx.font = '28px Roboto, sans-serif';
   ctx.fillStyle = '#9e9e9e';
   ctx.fillText('Изучено', ringX, ringY + 45);
-  
+
   const startX = 600;
   const startY = 460;
   const rowHeight = 100;
-  
+
   const items = [
     { label: 'Точность ответов', value: `${global.accuracy}%`, color: '#8ab4f8' },
     { label: 'Вопросов изучено', value: `${global.answeredCount} из ${global.totalQuestions}`, color: '#ffffff' },
     { label: 'Сложные вопросы', value: `${global.totalDifficult}`, color: '#fdd663' },
     { label: 'Всего попыток', value: `${global.totalCorrect + global.totalIncorrect}`, color: '#ffffff' }
   ];
-  
+
   ctx.textAlign = 'left';
   items.forEach((item, idx) => {
     const y = startY + (idx * rowHeight);
-    
+
     ctx.fillStyle = item.color;
     ctx.beginPath();
     ctx.arc(startX, y - 12, 10, 0, Math.PI * 2);
     ctx.fill();
-    
+
     ctx.font = '30px Roboto, sans-serif';
     ctx.fillStyle = '#9e9e9e';
     ctx.fillText(item.label, startX + 30, y);
-    
+
     ctx.font = 'bold 36px Roboto, sans-serif';
     ctx.fillStyle = '#ffffff';
     ctx.fillText(item.value, startX + 370, y);
@@ -2498,12 +2579,12 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
   const words = text.split(' ');
   let line = '';
   let currentY = y;
-  
+
   for (let n = 0; n < words.length; n++) {
     const testLine = line + words[n] + ' ';
     const metrics = ctx.measureText(testLine);
     const testWidth = metrics.width;
-    
+
     if (testWidth > maxWidth && n > 0) {
       ctx.fillText(line, x, currentY);
       line = words[n] + ' ';

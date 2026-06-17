@@ -58,7 +58,6 @@ export function getQuestionStats(qId) {
     stats[qId] = {
       correctCount: 0,
       incorrectCount: 0,
-      isDifficult: false,
       acceptedAnswers: []
     };
   }
@@ -71,7 +70,6 @@ export function recordAnswer(qId, isCorrect) {
     stats[qId] = {
       correctCount: 0,
       incorrectCount: 0,
-      isDifficult: false,
       acceptedAnswers: []
     };
   }
@@ -86,18 +84,18 @@ export function recordAnswer(qId, isCorrect) {
   return stats[qId];
 }
 
-export function toggleDifficult(qId) {
+export function toggleDifficult(qId, defaultDifficult = false) {
   const stats = getStats();
   if (!stats[qId]) {
     stats[qId] = {
       correctCount: 0,
       incorrectCount: 0,
-      isDifficult: false,
       acceptedAnswers: []
     };
   }
 
-  stats[qId].isDifficult = !stats[qId].isDifficult;
+  const currentVal = stats[qId].isDifficult !== undefined ? stats[qId].isDifficult : defaultDifficult;
+  stats[qId].isDifficult = !currentVal;
   saveStats(stats);
   return stats[qId].isDifficult;
 }
@@ -108,7 +106,6 @@ export function setDifficult(qId, isDiff) {
     stats[qId] = {
       correctCount: 0,
       incorrectCount: 0,
-      isDifficult: false,
       acceptedAnswers: []
     };
   }
@@ -123,7 +120,6 @@ export function addAcceptedAnswer(qId, answer) {
     stats[qId] = {
       correctCount: 0,
       incorrectCount: 0,
-      isDifficult: false,
       acceptedAnswers: []
     };
   }
@@ -147,16 +143,17 @@ export function getGlobalStats(questions) {
   let answeredCount = 0;
 
   questions.forEach(q => {
-    const qStat = stats[q.id];
-    if (qStat) {
-      totalCorrect += qStat.correctCount || 0;
-      totalIncorrect += qStat.incorrectCount || 0;
-      if (qStat.isDifficult) {
-        totalDifficult++;
-      }
-      if ((qStat.correctCount || 0) + (qStat.incorrectCount || 0) > 0) {
-        answeredCount++;
-      }
+    const qStat = stats[q.id] || {};
+    totalCorrect += qStat.correctCount || 0;
+    totalIncorrect += qStat.incorrectCount || 0;
+    
+    const isDiff = qStat.isDifficult !== undefined ? qStat.isDifficult : (q.isStarred || false);
+    if (isDiff) {
+      totalDifficult++;
+    }
+    
+    if ((qStat.correctCount || 0) + (qStat.incorrectCount || 0) > 0) {
+      answeredCount++;
     }
   });
 

@@ -34,7 +34,8 @@ export function prepareSession(questions, category, algorithm, onlyDifficult = f
   if (onlyDifficult) {
     filtered = filtered.filter(q => {
       const qStats = stats[q.id] || {};
-      return qStats.isDifficult || q.isStarred;
+      const isDiff = qStats.isDifficult !== undefined ? qStats.isDifficult : (q.isStarred || false);
+      return isDiff;
     });
   }
 
@@ -68,8 +69,8 @@ export function prepareSession(questions, category, algorithm, onlyDifficult = f
       const statA = stats[a.id] || {};
       const statB = stats[b.id] || {};
 
-      const isDiffA = statA.isDifficult ? 1 : 0;
-      const isDiffB = statB.isDifficult ? 1 : 0;
+      const isDiffA = (statA.isDifficult !== undefined ? statA.isDifficult : a.isStarred) ? 1 : 0;
+      const isDiffB = (statB.isDifficult !== undefined ? statB.isDifficult : b.isStarred) ? 1 : 0;
 
       const incA = statA.incorrectCount || 0;
       const incB = statB.incorrectCount || 0;
@@ -79,11 +80,10 @@ export function prepareSession(questions, category, algorithm, onlyDifficult = f
 
       // Weight calculation:
       // - Starred as difficult: +1000 points
-      // - Starred in md: +500 points
       // - Incorrect attempts: +10 points each
       // - Correct attempts: -2 points each
-      const weightA = (isDiffA * 1000) + (a.isStarred ? 500 : 0) + (incA * 10) - (corA * 2);
-      const weightB = (isDiffB * 1000) + (b.isStarred ? 500 : 0) + (incB * 10) - (corB * 2);
+      const weightA = (isDiffA * 1000) + (incA * 10) - (corA * 2);
+      const weightB = (isDiffB * 1000) + (incB * 10) - (corB * 2);
 
       // Descending order of weights (heavier = more difficult)
       if (weightB !== weightA) {
