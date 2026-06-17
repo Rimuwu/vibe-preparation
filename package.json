@@ -1,0 +1,11 @@
+{
+  "name": "vibe-preparation",
+  "version": "1.0.0",
+  "description": "Flashcard preparation platform for exam questions",
+  "scripts": {
+    "dev": "npx -y http-server -p 3000"
+  },
+  "keywords": [],
+  "author": "as1aw",
+  "license": "ISC"
+}
