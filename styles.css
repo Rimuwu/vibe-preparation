@@ -1475,3 +1475,63 @@ header {
     border-radius: var(--radius-sm);
   }
 }
+
+/* Leaderboard & Sync Styling */
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+}
+
+.leaderboard-table th,
+.leaderboard-table td {
+  padding: 0.85rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.9rem;
+}
+
+.leaderboard-table th {
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.leaderboard-table tbody tr {
+  transition: var(--transition);
+}
+
+.leaderboard-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.leaderboard-table tbody tr.current-user {
+  background: var(--primary-dark);
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.leaderboard-table tbody tr.current-user td {
+  border-bottom-color: rgba(138, 180, 248, 0.3);
+}
+
+.leaderboard-table .rank-col {
+  font-weight: 600;
+}
+
+.leaderboard-table .rank-1 {
+  color: #ffca28; /* Gold */
+}
+
+.leaderboard-table .rank-2 {
+  color: #b0bec5; /* Silver */
+}
+
+.leaderboard-table .rank-3 {
+  color: #ff8a65; /* Bronze */
+}
+
+#leaderboard-tbody tr td {
+  vertical-align: middle;
+}

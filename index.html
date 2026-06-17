@@ -60,6 +60,12 @@
             </svg>
             <span class="nav-text">Статистика</span>
           </button>
+          <button id="btn-show-leaderboard" class="btn-icon" title="Таблица лидеров">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+            </svg>
+            <span class="nav-text">Лидеры</span>
+          </button>
           <button id="btn-show-viewer" class="btn-icon" title="Просмотр темы">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -409,27 +415,71 @@
         </div>
       </div>
 
-      <!-- Backup / Restore Progress Panel -->
+      <!-- Cloud Sync & Backup Panel -->
       <div class="panel">
-        <h3 style="font-size: 1rem; margin-bottom: 0.75rem; font-weight: 600;">Резервная копия прогресса</h3>
-        <div style="display: flex; gap: 0.75rem;">
-          <button id="btn-export-progress" class="btn-primary" style="padding: 0.6rem 1rem; font-size: 0.85rem; width: auto; flex-grow: 1; border-radius: 100px;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            Экспорт прогресса
-          </button>
-          <button id="btn-import-progress-trigger" class="btn-action" style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--border-color); flex-grow: 1; border-radius: 100px; background: transparent; color: var(--text-main); border: 1px solid var(--border-color);">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="17 8 12 3 7 8"></polyline>
-              <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            Импорт прогресса
-          </button>
-          <input type="file" id="import-progress-input" accept=".json" style="display: none;">
+        <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">Синхронизация и резервная копия</h2>
+        
+        <!-- Cloud Sync Sub-section -->
+        <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
+          <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">Облачная синхронизация</h3>
+          
+          <!-- Status Indicator -->
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+            <span style="font-size: 0.9rem; color: var(--text-muted);">Статус:</span>
+            <span id="sync-status-badge" class="brand-badge" style="background: rgba(158, 158, 158, 0.15); color: var(--text-muted); border-color: rgba(158, 158, 158, 0.3);">Локальный режим</span>
+          </div>
+
+          <!-- Setup Actions -->
+          <div id="sync-setup-actions" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <button id="btn-generate-sync-code" class="btn-primary" style="flex: 1; min-width: 160px; border-radius: var(--radius-sm); font-size: 0.85rem; padding: 0.6rem 1rem;">
+              Передать данные (Сгенерировать код)
+            </button>
+            <button id="btn-enter-sync-code" class="btn-action" style="flex: 1; min-width: 160px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); font-size: 0.85rem; padding: 0.6rem 1rem; border: 1px solid var(--border-color);">
+              Принять данные (Ввести код)
+            </button>
+          </div>
+
+          <!-- Connected Actions -->
+          <div id="sync-connected-actions" style="display: none; flex-direction: column; gap: 0.75rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
+              Код синхронизации: <strong id="sync-code-display" style="color: var(--primary); font-size: 1rem; letter-spacing: 0.05em;">VIBE-XXXX-YYYY</strong>
+              <br>Используйте этот код на других устройствах, чтобы связать их с этим прогрессом.
+            </div>
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.25rem;">
+              <button id="btn-sync-now" class="btn-primary" style="flex: 1; min-width: 160px; border-radius: var(--radius-sm); font-size: 0.85rem; padding: 0.6rem 1rem;">
+                Обновить (Синхронизировать)
+              </button>
+              <button id="btn-disconnect-sync" class="btn-action" style="flex: 1; min-width: 160px; border-radius: var(--radius-sm); border: 1px solid var(--error); background: var(--error-dark); color: var(--error); font-size: 0.85rem; padding: 0.6rem 1rem; border: 1px solid var(--error);">
+                Отключить синхронизацию
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div style="height: 1px; background: var(--border-color); margin-bottom: 1.25rem;"></div>
+
+        <!-- Local Backup Sub-section -->
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 0; margin-bottom: 0.25rem;">Локальный бэкап</h3>
+          <div style="display: flex; gap: 0.75rem;">
+            <button id="btn-export-progress" class="btn-primary" style="padding: 0.6rem 1rem; font-size: 0.85rem; width: auto; flex-grow: 1; border-radius: 100px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Экспорт прогресса
+            </button>
+            <button id="btn-import-progress-trigger" class="btn-action" style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--border-color); flex-grow: 1; border-radius: 100px; background: transparent; color: var(--text-main); border: 1px solid var(--border-color);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              Импорт прогресса
+            </button>
+            <input type="file" id="import-progress-input" accept=".json" style="display: none;">
+          </div>
         </div>
       </div>
 
@@ -554,6 +604,58 @@
           <div style="display: flex; gap: 0.5rem;">
             <button id="btn-viewer-cancel-selection" class="btn-action" style="border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); font-size: 0.85rem; padding: 0.5rem 1rem;">Отмена</button>
             <button id="btn-viewer-create-list" class="btn-primary" style="width: auto; border-radius: var(--radius-sm); font-size: 0.85rem; padding: 0.5rem 1rem;">Создать список</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. LEADERBOARD & SYNC SCREEN -->
+    <section id="screen-leaderboard" class="screen">
+      <!-- Top Section: Username Config -->
+      <div class="panel">
+        <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">Никнейм для лидерборда</h2>
+        <div style="display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;">
+          <div class="form-group" style="flex-grow: 1; margin-bottom: 0; min-width: 200px;">
+            <label for="input-nickname">Ваше имя в таблице</label>
+            <input type="text" id="input-nickname" class="search-input" placeholder="Например: Ivan_JS" style="width: 100%;">
+          </div>
+          <button id="btn-save-nickname" class="btn-primary" style="width: auto; padding: 0.75rem 1.5rem; height: 46px; border-radius: var(--radius-sm); font-size: 0.9rem;">
+            Сохранить
+          </button>
+        </div>
+      </div>
+
+
+
+      <!-- Leaderboard Panel -->
+      <div class="panel" style="flex-grow: 1; display: flex; flex-direction: column;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+          <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0;">Таблица лидеров</h2>
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; justify-content: flex-end;">
+            <label for="leaderboard-module-select" style="font-size: 0.8rem; color: var(--text-muted); margin: 0; white-space: nowrap;">Тема:</label>
+            <select id="leaderboard-module-select" class="select-control" style="width: auto; max-width: 250px; padding: 0.4rem 0.75rem; font-size: 0.85rem; height: 36px; border-radius: var(--radius-sm);">
+              <!-- Standard modules only -->
+            </select>
+          </div>
+        </div>
+
+        <div id="leaderboard-container" style="overflow-x: auto; flex-grow: 1;">
+          <table class="leaderboard-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">
+                <th style="padding: 0.75rem 0.5rem; width: 60px;">Место</th>
+                <th style="padding: 0.75rem 0.5rem;">Пользователь</th>
+                <th style="padding: 0.75rem 0.5rem; text-align: center; width: 100px;">Пройдено</th>
+                <th style="padding: 0.75rem 0.5rem; text-align: center; width: 100px;">Точность</th>
+                <th style="padding: 0.75rem 0.5rem; text-align: right; width: 150px;">Обновлено</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-tbody">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+          <div id="leaderboard-empty" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+            Загрузка таблицы лидеров...
           </div>
         </div>
       </div>

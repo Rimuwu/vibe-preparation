@@ -7,7 +7,18 @@ console.log('Preparation.vibe: app.js loaded and executing...');
 window.addEventListener('error', (e) => {
   console.error('Preparation.vibe Global Error Captured:', e.message, 'at', e.filename, ':', e.lineno);
 });
-
+// Override localStorage.setItem to auto-track local changes
+const originalSetItem = localStorage.setItem;
+localStorage.setItem = function(key, value) {
+  try {
+    originalSetItem.apply(this, arguments);
+    if (key.startsWith('vibe_prep_') && key !== 'vibe_prep_sync_timestamp' && key !== 'vibe_prep_sync_code' && key !== 'vibe_prep_nickname') {
+      originalSetItem.call(localStorage, 'vibe_prep_sync_timestamp', Date.now().toString());
+    }
+  } catch (e) {
+    console.error('[Preparation.vibe] localStorage override error', e);
+  }
+};
 
 import { parseMarkdown } from './parser.js';
 import {
@@ -46,8 +57,10 @@ const screenStudy = document.getElementById('screen-study');
 const screenStats = document.getElementById('screen-stats');
 const screenViewer = document.getElementById('screen-viewer');
 const screenLists = document.getElementById('screen-lists');
+const screenLeaderboard = document.getElementById('screen-leaderboard');
 
 const btnShowStats = document.getElementById('btn-show-stats');
+const btnShowLeaderboard = document.getElementById('btn-show-leaderboard');
 const btnShowHome = document.getElementById('btn-show-home');
 const btnShowViewer = document.getElementById('btn-show-viewer');
 const btnMenuToggle = document.getElementById('btn-menu-toggle');
@@ -55,6 +68,21 @@ const navButtons = document.getElementById('nav-buttons');
 const btnResetStats = document.getElementById('btn-reset-stats');
 const btnShareStats = document.getElementById('btn-share-stats');
 const btnEditCurrentQuestion = document.getElementById('btn-edit-current-question');
+
+// Leaderboard & Sync Elements
+const inputNickname = document.getElementById('input-nickname');
+const btnSaveNickname = document.getElementById('btn-save-nickname');
+const syncStatusBadge = document.getElementById('sync-status-badge');
+const syncSetupActions = document.getElementById('sync-setup-actions');
+const btnGenerateSyncCode = document.getElementById('btn-generate-sync-code');
+const btnEnterSyncCode = document.getElementById('btn-enter-sync-code');
+const syncConnectedActions = document.getElementById('sync-connected-actions');
+const syncCodeDisplay = document.getElementById('sync-code-display');
+const btnSyncNow = document.getElementById('btn-sync-now');
+const btnDisconnectSync = document.getElementById('btn-disconnect-sync');
+const leaderboardModuleSelect = document.getElementById('leaderboard-module-select');
+const leaderboardTbody = document.getElementById('leaderboard-tbody');
+const leaderboardEmpty = document.getElementById('leaderboard-empty');
 
 const modulesList = document.getElementById('modules-list');
 const inputModuleName = document.getElementById('input-module-name');
@@ -403,6 +431,11 @@ async function initApp() {
 
   // 1. Load modules manifest and custom modules
   await loadModules();
+
+  // 1.5. Check database and sync progress silently if a sync code exists
+  await checkDbHealth();
+  await syncProgressWithCloud();
+  await pushLeaderboardStats();
 
   // 2. Check for active session
   const savedSession = localStorage.getItem('vibe_prep_active_session');
@@ -1099,6 +1132,197 @@ function setupEventListeners() {
       }
     });
   }
+
+  // Show Leaderboard & Sync screen from navigation
+  if (btnShowLeaderboard) {
+    btnShowLeaderboard.addEventListener('click', () => {
+      switchScreen('leaderboard');
+      if (navButtons) navButtons.classList.remove('active');
+    });
+  }
+
+  // Leaderboard nickname saving
+  if (btnSaveNickname) {
+    btnSaveNickname.addEventListener('click', async () => {
+      const nickname = inputNickname.value.trim();
+      if (!nickname) {
+        showModalAlert('Пожалуйста, введите никнейм.');
+        return;
+      }
+      localStorage.setItem('vibe_prep_nickname', nickname);
+      
+      // Upload stats for the nickname immediately
+      showModalAlert('Никнейм сохранен. Идет загрузка статистики в таблицу лидеров...', 'Успех');
+      await pushLeaderboardStats();
+      if (leaderboardModuleSelect && leaderboardModuleSelect.value) {
+        loadLeaderboard(leaderboardModuleSelect.value);
+      }
+    });
+  }
+
+  // Generate sync code (Share progress)
+  if (btnGenerateSyncCode) {
+    btnGenerateSyncCode.addEventListener('click', async () => {
+      if (await showModalConfirm('Вы действительно хотите выгрузить свои данные в облако и создать код синхронизации? Все локальные данные на другом устройстве будут заменены вашими при вводе этого кода.')) {
+        try {
+          const payload = { data: JSON.parse(exportProgressJSON()) };
+          const baseUrl = await getApiUrl();
+          const res = await fetch(`${baseUrl}/api/sync/create`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!res.ok) throw new Error('Ошибка связи с сервером');
+          
+          const result = await res.json();
+          localStorage.setItem('vibe_prep_sync_code', result.code);
+          const timestamp = new Date(result.updatedAt).getTime();
+          localStorage.setItem('vibe_prep_sync_timestamp', timestamp.toString());
+          
+          showModalAlert(`Синхронизация успешно создана!\n\nВаш код: ${result.code}\n\nВведите этот код на другом устройстве для переноса данных.`, 'Успех');
+          updateSyncBadgeUI(true, result.code);
+        } catch (e) {
+          showModalAlert('Не удалось сгенерировать код синхронизации: ' + e.message);
+        }
+      }
+    });
+  }
+
+  // Enter sync code (Accept progress)
+  if (btnEnterSyncCode) {
+    btnEnterSyncCode.addEventListener('click', async () => {
+      const code = prompt('Введите код синхронизации (например, VIBE-ABCD-1234):');
+      if (code === null) return; // cancelled
+      const cleanCode = code.trim().toUpperCase();
+      if (!cleanCode) {
+        showModalAlert('Код не может быть пустым.');
+        return;
+      }
+
+      if (await showModalConfirm('Вы уверены? Импорт данных заменит ваш текущий локальный прогресс данными из облака.')) {
+        try {
+          const baseUrl = await getApiUrl();
+          const res = await fetch(`${baseUrl}/api/sync/${cleanCode}`);
+          if (res.status === 404) {
+            showModalAlert('Код синхронизации не найден. Пожалуйста, проверьте правильность ввода.');
+            return;
+          }
+          if (!res.ok) throw new Error('Ошибка связи с сервером');
+          
+          const serverData = await res.json();
+          importProgressJSON(JSON.stringify(serverData.data));
+          localStorage.setItem('vibe_prep_sync_code', cleanCode);
+          const timestamp = new Date(serverData.updatedAt).getTime();
+          localStorage.setItem('vibe_prep_sync_timestamp', timestamp.toString());
+          
+          showModalAlert('Данные успешно импортированы и устройства связаны!', 'Успех');
+          
+          // Reload view data
+          loadModules();
+          updateGlobalStatsUI();
+          renderStatsTable();
+          if (activeModule) {
+            dbQuestions = await loadQuestionsForModule(activeModule);
+            populateCategories();
+          }
+
+          updateSyncBadgeUI(true, cleanCode);
+        } catch (e) {
+          showModalAlert('Не удалось подключиться к синхронизации: ' + e.message);
+        }
+      }
+    });
+  }
+
+  // Force sync / Update
+  if (btnSyncNow) {
+    btnSyncNow.addEventListener('click', async () => {
+      const syncStatusBadge = document.getElementById('sync-status-badge');
+      if (syncStatusBadge) {
+        syncStatusBadge.textContent = 'Синхронизация...';
+      }
+      
+      const syncCode = localStorage.getItem('vibe_prep_sync_code');
+      if (!syncCode) return;
+
+      try {
+        const baseUrl = await getApiUrl();
+        const res = await fetch(`${baseUrl}/api/sync/${syncCode}`);
+        if (res.status === 404) {
+          showModalAlert('Код синхронизации не найден на сервере (возможно, он был удален). Синхронизация отключена.');
+          disconnectSyncSilently();
+          return;
+        }
+        if (!res.ok) throw new Error('Ошибка связи с сервером');
+
+        const serverData = await res.json();
+        const serverTimestamp = new Date(serverData.updatedAt).getTime();
+        const localTimestampStr = localStorage.getItem('vibe_prep_sync_timestamp');
+        const localTimestamp = localTimestampStr ? parseInt(localTimestampStr, 10) : 0;
+
+        if (serverTimestamp > localTimestamp) {
+          if (await showModalConfirm('В облаке есть более новые данные. Загрузить их на это устройство?\nВнимание: ваши текущие локальные изменения будут перезаписаны.')) {
+            importProgressJSON(JSON.stringify(serverData.data));
+            localStorage.setItem('vibe_prep_sync_timestamp', serverTimestamp.toString());
+            showModalAlert('Данные успешно загружены из облака!', 'Успех');
+            loadModules();
+            updateGlobalStatsUI();
+            renderStatsTable();
+            if (activeModule) {
+              dbQuestions = await loadQuestionsForModule(activeModule);
+              populateCategories();
+            }
+          }
+        } else {
+          // Push local stats to cloud
+          if (await showModalConfirm('Выгрузить ваш текущий локальный прогресс в облако? Это обновит данные для всех связанных устройств.')) {
+            const payload = { data: JSON.parse(exportProgressJSON()) };
+            const uploadRes = await fetch(`${baseUrl}/api/sync/${syncCode}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            if (!uploadRes.ok) throw new Error('Не удалось выгрузить данные на сервер');
+            
+            const uploadData = await uploadRes.json();
+            const newServerTimestamp = new Date(uploadData.updatedAt).getTime();
+            localStorage.setItem('vibe_prep_sync_timestamp', newServerTimestamp.toString());
+            showModalAlert('Данные успешно выгружены в облако!', 'Успех');
+          }
+        }
+        
+        // Also upload stats to leaderboard
+        await pushLeaderboardStats();
+        if (leaderboardModuleSelect && leaderboardModuleSelect.value) {
+          loadLeaderboard(leaderboardModuleSelect.value);
+        }
+        
+        updateSyncBadgeUI(true, syncCode);
+      } catch (e) {
+        showModalAlert('Ошибка во время синхронизации: ' + e.message);
+        updateSyncBadgeUI(true, syncCode, true);
+      }
+    });
+  }
+
+  // Disconnect sync
+  if (btnDisconnectSync) {
+    btnDisconnectSync.addEventListener('click', async () => {
+      if (await showModalConfirm('Вы уверены, что хотите отключить синхронизацию? Устройства больше не будут обмениваться данными, но ваш локальный прогресс сохранится.')) {
+        disconnectSyncSilently();
+        showModalAlert('Синхронизация отключена.', 'Готово');
+      }
+    });
+  }
+
+  // Change leaderboard topic
+  if (leaderboardModuleSelect) {
+    leaderboardModuleSelect.addEventListener('change', () => {
+      if (leaderboardModuleSelect.value) {
+        loadLeaderboard(leaderboardModuleSelect.value);
+      }
+    });
+  }
 }
 
 
@@ -1126,6 +1350,7 @@ function switchScreen(screenName) {
   if (screenStats) screenStats.classList.remove('active');
   if (screenViewer) screenViewer.classList.remove('active');
   if (screenLists) screenLists.classList.remove('active');
+  if (screenLeaderboard) screenLeaderboard.classList.remove('active');
 
   if (screenName === 'modules') {
     if (screenModules) screenModules.classList.add('active');
@@ -1139,6 +1364,8 @@ function switchScreen(screenName) {
   } else if (screenName === 'stats') {
     if (screenStats) screenStats.classList.add('active');
     updateGlobalStatsUI();
+    const syncCode = localStorage.getItem('vibe_prep_sync_code');
+    updateSyncBadgeUI(!!syncCode, syncCode);
     console.log('[Preparation.vibe] screenStats activated');
   } else if (screenName === 'viewer') {
     if (screenViewer) screenViewer.classList.add('active');
@@ -1147,6 +1374,10 @@ function switchScreen(screenName) {
     if (screenLists) screenLists.classList.add('active');
     console.log('[Preparation.vibe] screenLists activated. Rendering lists...');
     renderListsScreen();
+  } else if (screenName === 'leaderboard') {
+    if (screenLeaderboard) screenLeaderboard.classList.add('active');
+    console.log('[Preparation.vibe] screenLeaderboard activated. Rendering...');
+    renderLeaderboardScreen();
   } else {
     console.warn(`[Preparation.vibe] Unknown screen: "${screenName}"`);
   }
@@ -2694,3 +2925,348 @@ function showModalShareCard(imgUrl, canvasElement) {
   modalClose.addEventListener('click', onClose);
 }
 
+/* -------------------------------------------------------------
+ * 6. Leaderboard & Data Sync Functionality
+ * ------------------------------------------------------------- */
+
+let API_URL = '';
+
+async function getApiUrl() {
+  if (API_URL) return API_URL;
+
+  // 1. Try to fetch from .env
+  try {
+    const resp = await fetch('.env');
+    if (resp.ok) {
+      const text = await resp.text();
+      const match = text.match(/^API_URL\s*=\s*(.*)$/m);
+      if (match && match[1]) {
+        API_URL = match[1].trim().replace(/^['"]|['"]$/g, '');
+        console.log('[Preparation.vibe] API_URL loaded from .env:', API_URL);
+        return API_URL;
+      }
+    }
+  } catch (e) {
+    console.warn('[Preparation.vibe] Failed to fetch .env, using defaults', e);
+  }
+
+  // 2. Fallbacks
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    API_URL = 'http://localhost:8000';
+  } else {
+    API_URL = window.location.origin;
+  }
+  console.log('[Preparation.vibe] API_URL resolved to:', API_URL);
+  return API_URL;
+}
+
+// Timeout fetch wrapper for background calls
+async function fetchWithTimeout(resource, options = {}) {
+  const { timeout = 3000 } = options;
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(resource, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (e) {
+    clearTimeout(id);
+    throw e;
+  }
+}
+
+// Check database health silently on start
+async function checkDbHealth() {
+  try {
+    const baseUrl = await getApiUrl();
+    const res = await fetchWithTimeout(`${baseUrl}/api/health`, { timeout: 2000 });
+    if (res.ok) {
+      const data = await res.json();
+      console.log('[Preparation.vibe] API Health:', data);
+    }
+  } catch (e) {
+    console.warn('[Preparation.vibe] Backend API is unreachable.', e);
+  }
+}
+
+// Load Leaderboard data
+async function loadLeaderboard(moduleId) {
+  if (!leaderboardTbody || !leaderboardEmpty) return;
+
+  leaderboardTbody.innerHTML = '';
+  leaderboardEmpty.style.display = 'block';
+  leaderboardEmpty.textContent = 'Загрузка таблицы лидеров...';
+
+  try {
+    const baseUrl = await getApiUrl();
+    const res = await fetch(`${baseUrl}/api/leaderboard/${moduleId}`);
+    if (!res.ok) throw new Error('Не удалось загрузить таблицу лидеров с сервера');
+    
+    const entries = await res.json();
+    leaderboardEmpty.style.display = 'none';
+
+    if (entries.length === 0) {
+      leaderboardEmpty.style.display = 'block';
+      leaderboardEmpty.textContent = 'В этой теме пока нет участников. Будьте первым!';
+      return;
+    }
+
+    const currentNickname = localStorage.getItem('vibe_prep_nickname') || '';
+
+    entries.forEach(entry => {
+      const tr = document.createElement('tr');
+      if (currentNickname && entry.nickname === currentNickname) {
+        tr.className = 'current-user';
+      }
+
+      // Format updated date
+      let dateStr = '—';
+      if (entry.updatedAt) {
+        const d = new Date(entry.updatedAt);
+        dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+
+      // Special styling for rank
+      let rankText = entry.rank;
+      let rankClass = 'rank-col';
+      if (entry.rank === 1) rankClass += ' rank-1';
+      else if (entry.rank === 2) rankClass += ' rank-2';
+      else if (entry.rank === 3) rankClass += ' rank-3';
+
+      tr.innerHTML = `
+        <td class="${rankClass}" style="padding: 0.75rem 0.5rem;">${rankText}</td>
+        <td style="padding: 0.75rem 0.5rem; word-break: break-all;">${escapeHtml(entry.nickname)}</td>
+        <td style="padding: 0.75rem 0.5rem; text-align: center;">${entry.completedCount} / ${entry.totalCount}</td>
+        <td style="padding: 0.75rem 0.5rem; text-align: center;">${Math.round(entry.accuracy)}%</td>
+        <td style="padding: 0.75rem 0.5rem; text-align: right; font-size: 0.8rem; color: var(--text-muted);">${dateStr}</td>
+      `;
+      leaderboardTbody.appendChild(tr);
+    });
+  } catch (err) {
+    console.error('Leaderboard error:', err);
+    leaderboardEmpty.style.display = 'block';
+    leaderboardEmpty.textContent = 'Ошибка загрузки: проверьте подключение к бэкенду';
+  }
+}
+
+// Push local stats for standard modules to the leaderboard
+async function pushLeaderboardStats() {
+  const nickname = localStorage.getItem('vibe_prep_nickname');
+  if (!nickname) return; // User hasn't set a nickname yet
+
+  // Only standard modules participate in leaderboards
+  const standardModules = allModules.filter(m => !m.isCustom);
+  if (standardModules.length === 0) return;
+
+  const baseUrl = await getApiUrl();
+
+  for (const mod of standardModules) {
+    try {
+      // 1. Get questions for module
+      const questions = await loadQuestionsForModule(mod);
+      if (questions.length === 0) continue;
+
+      // 2. Compute stats for this module
+      const stats = getGlobalStats(questions);
+      if (stats.answeredCount === 0) continue; // No attempts, no need to push
+
+      // 3. Upload
+      const res = await fetchWithTimeout(`${baseUrl}/api/leaderboard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nickname: nickname,
+          moduleId: mod.id,
+          completedCount: stats.answeredCount,
+          totalCount: stats.totalQuestions,
+          accuracy: stats.accuracy
+        }),
+        timeout: 3000
+      });
+      if (res.ok) {
+        console.log(`[Preparation.vibe] Leaderboard stats uploaded for module: ${mod.id}`);
+      }
+    } catch (e) {
+      console.warn(`[Preparation.vibe] Failed to upload leaderboard for module: ${mod.id}`, e);
+    }
+  }
+}
+
+// Sync backup data based on timestamps (smart automatic sync)
+async function syncProgressWithCloud() {
+  const syncCode = localStorage.getItem('vibe_prep_sync_code');
+  if (!syncCode) return;
+
+  console.log('[Preparation.vibe] Starting cloud progress sync using code:', syncCode);
+  const syncStatusBadge = document.getElementById('sync-status-badge');
+  if (syncStatusBadge) {
+    syncStatusBadge.textContent = 'Синхронизация...';
+    syncStatusBadge.style.color = 'var(--warning)';
+    syncStatusBadge.style.borderColor = 'rgba(253, 214, 99, 0.3)';
+    syncStatusBadge.style.background = 'var(--warning-dark)';
+  }
+
+  try {
+    const baseUrl = await getApiUrl();
+    const res = await fetchWithTimeout(`${baseUrl}/api/sync/${syncCode}`, { timeout: 3000 });
+    
+    if (res.status === 404) {
+      console.warn('[Preparation.vibe] Sync code not found on server. Disconnecting.');
+      disconnectSyncSilently();
+      return;
+    }
+
+    if (!res.ok) throw new Error('Не удалось связаться с сервером синхронизации');
+
+    const serverData = await res.json();
+    const serverTimestamp = new Date(serverData.updatedAt).getTime();
+    
+    const localTimestampStr = localStorage.getItem('vibe_prep_sync_timestamp');
+    const localTimestamp = localTimestampStr ? parseInt(localTimestampStr, 10) : 0;
+
+    if (serverTimestamp > localTimestamp) {
+      // Server is newer -> Pull/Download from cloud
+      console.log('[Preparation.vibe] Cloud data is newer. Downloading changes...');
+      importProgressJSON(JSON.stringify(serverData.data));
+      // Save server timestamp via original setItem to avoid infinite change loops
+      originalSetItem.call(localStorage, 'vibe_prep_sync_timestamp', serverTimestamp.toString());
+      
+      // Reload current screen if it displays modules or stats
+      if (screenModules && screenModules.classList.contains('active')) {
+        loadModules();
+      } else if (screenStats && screenStats.classList.contains('active')) {
+        updateGlobalStatsUI();
+        renderStatsTable();
+      } else if (activeModule) {
+        dbQuestions = await loadQuestionsForModule(activeModule);
+        populateCategories();
+      }
+      
+      console.log('[Preparation.vibe] Cloud data downloaded successfully.');
+    } else if (localTimestamp > serverTimestamp) {
+      // Local is newer -> Push/Upload to cloud
+      console.log('[Preparation.vibe] Local data is newer. Uploading changes...');
+      const payload = { data: JSON.parse(exportProgressJSON()) };
+      const uploadRes = await fetchWithTimeout(`${baseUrl}/api/sync/${syncCode}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        timeout: 3500
+      });
+      if (!uploadRes.ok) throw new Error('Не удалось загрузить данные на сервер');
+      
+      const uploadData = await uploadRes.json();
+      const newServerTimestamp = new Date(uploadData.updatedAt).getTime();
+      originalSetItem.call(localStorage, 'vibe_prep_sync_timestamp', newServerTimestamp.toString());
+      console.log('[Preparation.vibe] Local data uploaded successfully.');
+    } else {
+      console.log('[Preparation.vibe] Progress is already up to date.');
+    }
+
+    updateSyncBadgeUI(true, syncCode);
+  } catch (err) {
+    console.error('[Preparation.vibe] Sync error:', err);
+    updateSyncBadgeUI(true, syncCode, true);
+  }
+}
+
+// Disconnect sync without alerts (used on load errors)
+function disconnectSyncSilently() {
+  localStorage.removeItem('vibe_prep_sync_code');
+  localStorage.removeItem('vibe_prep_sync_timestamp');
+  updateSyncBadgeUI(false);
+}
+
+// Escape HTML utility to prevent XSS
+function escapeHtml(str) {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Render the entire leaderboard & sync screen
+async function renderLeaderboardScreen() {
+  // 1. Populate standard modules select
+  if (leaderboardModuleSelect) {
+    leaderboardModuleSelect.innerHTML = '';
+    const standardModules = allModules.filter(m => !m.isCustom);
+    
+    if (standardModules.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'Нет стандартных тем';
+      leaderboardModuleSelect.appendChild(opt);
+    } else {
+      standardModules.forEach(mod => {
+        const opt = document.createElement('option');
+        opt.value = mod.id;
+        opt.textContent = mod.name;
+        leaderboardModuleSelect.appendChild(opt);
+      });
+
+      // Select active module if it is standard, otherwise select the first standard module
+      if (activeModule && !activeModule.isCustom) {
+        leaderboardModuleSelect.value = activeModule.id;
+      } else if (standardModules.length > 0) {
+        leaderboardModuleSelect.value = standardModules[0].id;
+      }
+    }
+  }
+
+  // 2. Pre-populate nickname
+  const nickname = localStorage.getItem('vibe_prep_nickname') || '';
+  if (inputNickname) {
+    inputNickname.value = nickname;
+  }
+
+
+
+  // 4. Load the leaderboard for the selected standard module
+  if (leaderboardModuleSelect && leaderboardModuleSelect.value) {
+    loadLeaderboard(leaderboardModuleSelect.value);
+  }
+}
+
+// Update Sync Badge UI helper
+function updateSyncBadgeUI(isSynced, syncCode = '', isOffline = false) {
+  const syncStatusBadge = document.getElementById('sync-status-badge');
+  const syncSetupActions = document.getElementById('sync-setup-actions');
+  const syncConnectedActions = document.getElementById('sync-connected-actions');
+  const syncCodeDisplay = document.getElementById('sync-code-display');
+
+  if (!syncStatusBadge) return;
+
+  if (isSynced) {
+    if (isOffline) {
+      syncStatusBadge.textContent = 'Ошибка синхронизации';
+      syncStatusBadge.style.color = 'var(--error)';
+      syncStatusBadge.style.borderColor = 'rgba(242, 139, 130, 0.3)';
+      syncStatusBadge.style.background = 'var(--error-dark)';
+    } else {
+      syncStatusBadge.textContent = 'Синхронизировано по коду';
+      syncStatusBadge.style.color = 'var(--success)';
+      syncStatusBadge.style.borderColor = 'rgba(129, 201, 149, 0.3)';
+      syncStatusBadge.style.background = 'var(--success-dark)';
+    }
+    
+    if (syncSetupActions) syncSetupActions.style.display = 'none';
+    if (syncConnectedActions) syncConnectedActions.style.display = 'flex';
+    if (syncCodeDisplay) syncCodeDisplay.textContent = syncCode;
+  } else {
+    syncStatusBadge.textContent = 'Локальный режим';
+    syncStatusBadge.style.color = 'var(--text-muted)';
+    syncStatusBadge.style.borderColor = 'rgba(158, 158, 158, 0.3)';
+    syncStatusBadge.style.background = 'rgba(158, 158, 158, 0.15)';
+
+    if (syncSetupActions) syncSetupActions.style.display = 'flex';
+    if (syncConnectedActions) syncConnectedActions.style.display = 'none';
+  }
+}
