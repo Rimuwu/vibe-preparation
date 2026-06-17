@@ -49,6 +49,9 @@ let isCardFlipped = false;    // Visual state of the card
 let fileLoaded = false;       // If questions are loaded
 let activeModule = null;      // Selected module metadata
 let allModules = [];          // Combined list of standard and custom modules
+let viewerActiveTag = null;
+let statsActiveTag = null;
+
 
 // DOM Elements
 const screenModules = document.getElementById('screen-modules');
@@ -58,6 +61,7 @@ const screenStats = document.getElementById('screen-stats');
 const screenViewer = document.getElementById('screen-viewer');
 const screenLists = document.getElementById('screen-lists');
 const screenLeaderboard = document.getElementById('screen-leaderboard');
+const screenSettings = document.getElementById('screen-settings');
 
 const btnShowStats = document.getElementById('btn-show-stats');
 const btnShowLeaderboard = document.getElementById('btn-show-leaderboard');
@@ -716,6 +720,8 @@ function handleCustomModuleFile(file) {
  * ------------------------------------------------------------- */
 
 function setupEventListeners() {
+  // GitHub star banner is now non-dismissible, no close button event needed
+
   if (btnShowLists) {
     btnShowLists.addEventListener('click', () => {
       switchScreen('lists');
@@ -735,6 +741,8 @@ function setupEventListeners() {
         viewerSortBy.value = 'number_asc';
         isAllExpanded = true;
         btnViewerToggleAll.textContent = 'Свернуть все';
+        viewerActiveTag = null;
+        renderViewerTagFilter();
 
         // Trigger selection mode
         isSelectionMode = true;
@@ -809,6 +817,8 @@ function setupEventListeners() {
     viewerSortBy.value = 'number_asc';
     isAllExpanded = true;
     btnViewerToggleAll.textContent = 'Свернуть все';
+    viewerActiveTag = null;
+    renderViewerTagFilter();
     renderViewerList();
   });
 
@@ -1101,6 +1111,8 @@ function setupEventListeners() {
       viewerSortBy.value = 'number_asc';
       isAllExpanded = true;
       btnViewerToggleAll.textContent = 'Свернуть все';
+      viewerActiveTag = null;
+      renderViewerTagFilter();
       renderViewerList();
 
       if (navButtons) navButtons.classList.remove('active');
@@ -1129,6 +1141,101 @@ function setupEventListeners() {
         btn.addEventListener('click', () => {
           navButtons.classList.remove('active');
         });
+      }
+    });
+  }
+
+  // Show Settings screen from navigation
+  const btnShowSettings = document.getElementById('btn-show-settings');
+  if (btnShowSettings) {
+    btnShowSettings.addEventListener('click', () => {
+      switchScreen('settings');
+      if (navButtons) navButtons.classList.remove('active');
+    });
+  }
+
+  // Settings back button
+  const btnSettingsBack = document.getElementById('btn-settings-back');
+  if (btnSettingsBack) {
+    btnSettingsBack.addEventListener('click', () => {
+      if (activeModule) {
+        switchScreen('dashboard');
+      } else {
+        switchScreen('modules');
+      }
+    });
+  }
+
+  // Shortcut from stats screen to settings
+  const btnGotoSettingsFromStats = document.getElementById('btn-goto-settings-from-stats');
+  if (btnGotoSettingsFromStats) {
+    btnGotoSettingsFromStats.addEventListener('click', () => {
+      switchScreen('settings');
+    });
+  }
+
+  // Collapse toggle for categories breakdown
+  const btnCollapseCategories = document.getElementById('btn-collapse-categories');
+  if (btnCollapseCategories) {
+    let catCollapsed = false;
+    btnCollapseCategories.addEventListener('click', () => {
+      catCollapsed = !catCollapsed;
+      const breakdown = document.getElementById('stats-categories-breakdown');
+      const icon = btnCollapseCategories.querySelector('.collapse-icon');
+      if (breakdown) breakdown.classList.toggle('collapsed', catCollapsed);
+      if (icon) icon.style.transform = catCollapsed ? 'rotate(180deg)' : '';
+    });
+  }
+
+  // Collapse toggle for tags breakdown
+  const btnCollapseTags = document.getElementById('btn-collapse-tags');
+  if (btnCollapseTags) {
+    let tagsCollapsed = false;
+    btnCollapseTags.addEventListener('click', () => {
+      tagsCollapsed = !tagsCollapsed;
+      const breakdown = document.getElementById('stats-tags-breakdown');
+      const icon = btnCollapseTags.querySelector('.collapse-icon');
+      if (breakdown) breakdown.classList.toggle('collapsed', tagsCollapsed);
+      if (icon) icon.style.transform = tagsCollapsed ? 'rotate(180deg)' : '';
+    });
+  }
+
+  // Viewer: "Add all matching filters" button
+  const btnViewerSelectAllFiltered = document.getElementById('btn-viewer-select-all-filtered');
+  if (btnViewerSelectAllFiltered) {
+    btnViewerSelectAllFiltered.addEventListener('click', () => {
+      if (!isSelectionMode) return;
+      // Get currently visible/filtered questions
+      const cards = viewerQuestionsList.querySelectorAll('.viewer-card[data-id]');
+      cards.forEach(card => {
+        const id = card.dataset.id;
+        if (id) {
+          selectedQuestionIds.add(id);
+          card.classList.add('selected');
+          const chk = card.querySelector('.viewer-select-checkbox');
+          if (chk) chk.checked = true;
+        }
+      });
+      if (viewerSelectionCount) {
+        viewerSelectionCount.textContent = `Выбрано вопросов: ${selectedQuestionIds.size}`;
+      }
+    });
+  }
+
+  // Viewer: "Clear selection" button
+  const btnViewerClearSelection = document.getElementById('btn-viewer-clear-selection');
+  if (btnViewerClearSelection) {
+    btnViewerClearSelection.addEventListener('click', () => {
+      if (!isSelectionMode) return;
+      selectedQuestionIds.clear();
+      const cards = viewerQuestionsList.querySelectorAll('.viewer-card.selected');
+      cards.forEach(card => {
+        card.classList.remove('selected');
+        const chk = card.querySelector('.viewer-select-checkbox');
+        if (chk) chk.checked = false;
+      });
+      if (viewerSelectionCount) {
+        viewerSelectionCount.textContent = 'Выбрано вопросов: 0';
       }
     });
   }
@@ -1363,12 +1470,16 @@ function switchScreen(screenName) {
   if (screenViewer) screenViewer.classList.remove('active');
   if (screenLists) screenLists.classList.remove('active');
   if (screenLeaderboard) screenLeaderboard.classList.remove('active');
+  if (screenSettings) screenSettings.classList.remove('active');
 
   if (screenName === 'modules') {
     if (screenModules) screenModules.classList.add('active');
     console.log('[Preparation.vibe] screenModules activated');
   } else if (screenName === 'dashboard') {
     if (screenDashboard) screenDashboard.classList.add('active');
+    // Banner is always visible on dashboard (non-dismissible)
+    const banner = document.getElementById('github-star-banner');
+    if (banner) banner.style.display = 'block';
     console.log('[Preparation.vibe] screenDashboard activated');
   } else if (screenName === 'study') {
     if (screenStudy) screenStudy.classList.add('active');
@@ -1376,6 +1487,10 @@ function switchScreen(screenName) {
   } else if (screenName === 'stats') {
     if (screenStats) screenStats.classList.add('active');
     updateGlobalStatsUI();
+    renderCategoryBreakdown();
+    renderTagBreakdown();
+    statsActiveTag = null;
+    renderStatsTagFilter();
     const syncCode = localStorage.getItem('vibe_prep_sync_code');
     updateSyncBadgeUI(!!syncCode, syncCode);
     console.log('[Preparation.vibe] screenStats activated');
@@ -1390,6 +1505,11 @@ function switchScreen(screenName) {
     if (screenLeaderboard) screenLeaderboard.classList.add('active');
     console.log('[Preparation.vibe] screenLeaderboard activated. Rendering...');
     renderLeaderboardScreen();
+  } else if (screenName === 'settings') {
+    if (screenSettings) screenSettings.classList.add('active');
+    const syncCode = localStorage.getItem('vibe_prep_sync_code');
+    updateSyncBadgeUI(!!syncCode, syncCode);
+    console.log('[Preparation.vibe] screenSettings activated.');
   } else {
     console.warn(`[Preparation.vibe] Unknown screen: "${screenName}"`);
   }
@@ -1490,7 +1610,22 @@ function loadCard(index) {
   isCardFlipped = false;
   studyCard.classList.remove('flipped');
 
-  cardFrontMeta.textContent = `${q.category} • Вопрос ${q.number}`;
+  cardFrontMeta.innerHTML = '';
+  const metaSpan = document.createElement('span');
+  metaSpan.textContent = `${q.category} • Вопрос ${q.number}`;
+  cardFrontMeta.appendChild(metaSpan);
+
+  if (q.tags && q.tags.length > 0) {
+    const tagsRow = document.createElement('div');
+    tagsRow.className = 'tags-row';
+    q.tags.forEach(tag => {
+      const b = document.createElement('span');
+      b.className = 'tag-badge';
+      b.textContent = tag;
+      tagsRow.appendChild(b);
+    });
+    cardFrontMeta.appendChild(tagsRow);
+  }
   cardQuestionText.textContent = q.title;
 
   const isDiff = qStats.isDifficult !== undefined ? qStats.isDifficult : q.isStarred;
@@ -1886,7 +2021,273 @@ function updateGlobalStatsUI() {
   statCompleted.textContent = `${global.answeredCount}/${global.totalQuestions}`;
   statDifficult.textContent = global.totalDifficult;
   statAttempts.textContent = global.totalCorrect + global.totalIncorrect;
+
+  // Tags learned stat
+  const stats = getStats();
+  const allTags = new Set();
+  const learnedTags = new Set();
+  dbQuestions.forEach(q => {
+    if (q.tags && q.tags.length > 0) {
+      q.tags.forEach(t => {
+        allTags.add(t);
+        const qStat = stats[q.id] || {};
+        if ((qStat.correctCount || 0) > 0) learnedTags.add(t);
+      });
+    }
+  });
+  const tagsCard = document.getElementById('stat-tags-card');
+  const tagsEl = document.getElementById('stat-tags-learned');
+  if (tagsCard && tagsEl) {
+    if (allTags.size > 0) {
+      tagsCard.style.display = '';
+      tagsEl.textContent = `${learnedTags.size}/${allTags.size}`;
+    } else {
+      tagsCard.style.display = 'none';
+    }
+  }
 }
+
+function renderViewerTagFilter() {
+  const filterBar = document.getElementById('viewer-tag-filter');
+  if (!filterBar) return;
+
+  const allTags = new Set();
+  dbQuestions.forEach(q => {
+    if (q.tags) {
+      q.tags.forEach(t => allTags.add(t));
+    }
+  });
+
+  if (allTags.size === 0) {
+    filterBar.style.display = 'none';
+    return;
+  }
+
+  filterBar.style.display = 'flex';
+  filterBar.innerHTML = '';
+
+  allTags.forEach(tag => {
+    const chip = document.createElement('span');
+    chip.className = 'tag-badge';
+    if (viewerActiveTag === tag) {
+      chip.classList.add('active');
+    }
+    chip.textContent = tag;
+    chip.addEventListener('click', () => {
+      if (viewerActiveTag === tag) {
+        viewerActiveTag = null;
+      } else {
+        viewerActiveTag = tag;
+      }
+      renderViewerTagFilter();
+      renderViewerList();
+    });
+    filterBar.appendChild(chip);
+  });
+}
+
+function renderStatsTagFilter() {
+  const filterBar = document.getElementById('stats-tag-filter');
+  if (!filterBar) return;
+
+  const allTags = new Set();
+  dbQuestions.forEach(q => {
+    if (q.tags) {
+      q.tags.forEach(t => allTags.add(t));
+    }
+  });
+
+  if (allTags.size === 0) {
+    filterBar.style.display = 'none';
+    return;
+  }
+
+  filterBar.style.display = 'flex';
+  filterBar.innerHTML = '';
+
+  allTags.forEach(tag => {
+    const chip = document.createElement('span');
+    chip.className = 'tag-badge';
+    if (statsActiveTag === tag) {
+      chip.classList.add('active');
+    }
+    chip.textContent = tag;
+    chip.addEventListener('click', () => {
+      if (statsActiveTag === tag) {
+        statsActiveTag = null;
+      } else {
+        statsActiveTag = tag;
+      }
+      renderStatsTagFilter();
+      renderStatsTable();
+    });
+    filterBar.appendChild(chip);
+  });
+}
+
+function renderCategoryBreakdown() {
+  const container = document.getElementById('stats-categories-breakdown');
+  if (!container) return;
+
+  container.innerHTML = '';
+  const stats = getStats();
+
+  const categories = {};
+  dbQuestions.forEach(q => {
+    const cat = q.category || 'Общее';
+    if (!categories[cat]) {
+      categories[cat] = [];
+    }
+    categories[cat].push(q);
+  });
+
+  const catNames = Object.keys(categories).sort();
+  if (catNames.length === 0) {
+    container.innerHTML = '<div style="text-align:center; padding:1rem; color:var(--text-muted); font-size:0.85rem;">Нет категорий</div>';
+    return;
+  }
+
+  catNames.forEach(cat => {
+    const qList = categories[cat];
+    const total = qList.length;
+    let answered = 0;
+    let correctAttempts = 0;
+    let totalAttempts = 0;
+
+    qList.forEach(q => {
+      const qStat = stats[q.id] || { correctCount: 0, incorrectCount: 0 };
+      const c = qStat.correctCount || 0;
+      const ic = qStat.incorrectCount || 0;
+      if (c + ic > 0) {
+        answered++;
+        correctAttempts += c;
+        totalAttempts += (c + ic);
+      }
+    });
+
+    const studyPct = total > 0 ? Math.round((answered / total) * 100) : 0;
+    const accuracyPct = totalAttempts > 0 ? Math.round((correctAttempts / totalAttempts) * 100) : 0;
+
+    let accClass = 'accuracy';
+    if (accuracyPct < 40) {
+      accClass = 'accuracy very-low';
+    } else if (accuracyPct < 70) {
+      accClass = 'accuracy low';
+    }
+
+    const item = document.createElement('div');
+    item.className = 'breakdown-item';
+    item.innerHTML = `
+      <div class="breakdown-label">
+        <span class="breakdown-name">${escapeHtml(cat)}</span>
+        <span class="breakdown-stats">${answered}/${total} изучено</span>
+      </div>
+      <div class="breakdown-bars">
+        <div class="breakdown-bar-row">
+          <span class="breakdown-bar-label">Изучение</span>
+          <div class="breakdown-bar-track">
+            <div class="breakdown-bar-fill study" style="width: ${studyPct}%;"></div>
+          </div>
+          <span class="breakdown-bar-pct">${studyPct}%</span>
+        </div>
+        <div class="breakdown-bar-row">
+          <span class="breakdown-bar-label">Точность</span>
+          <div class="breakdown-bar-track">
+            <div class="breakdown-bar-fill ${accClass}" style="width: ${accuracyPct}%;"></div>
+          </div>
+          <span class="breakdown-bar-pct">${accuracyPct}%</span>
+        </div>
+      </div>
+    `;
+    container.appendChild(item);
+  });
+}
+
+function renderTagBreakdown() {
+  const container = document.getElementById('stats-tags-breakdown');
+  const panel = document.getElementById('stats-tags-panel');
+  if (!container) return;
+
+  container.innerHTML = '';
+  const stats = getStats();
+
+  const tags = {};
+  let hasAnyTags = false;
+  dbQuestions.forEach(q => {
+    if (q.tags && q.tags.length > 0) {
+      hasAnyTags = true;
+      q.tags.forEach(tag => {
+        if (!tags[tag]) {
+          tags[tag] = [];
+        }
+        tags[tag].push(q);
+      });
+    }
+  });
+
+  if (!hasAnyTags) {
+    if (panel) panel.style.display = 'none';
+    return;
+  }
+  if (panel) panel.style.display = 'block';
+
+  const tagNames = Object.keys(tags).sort();
+  tagNames.forEach(tag => {
+    const qList = tags[tag];
+    const total = qList.length;
+    let answered = 0;
+    let correctAttempts = 0;
+    let totalAttempts = 0;
+
+    qList.forEach(q => {
+      const qStat = stats[q.id] || { correctCount: 0, incorrectCount: 0 };
+      const c = qStat.correctCount || 0;
+      const ic = qStat.incorrectCount || 0;
+      if (c + ic > 0) {
+        answered++;
+        correctAttempts += c;
+        totalAttempts += (c + ic);
+      }
+    });
+
+    const studyPct = total > 0 ? Math.round((answered / total) * 100) : 0;
+    const accuracyPct = totalAttempts > 0 ? Math.round((correctAttempts / totalAttempts) * 100) : 0;
+
+    let accClass = 'accuracy';
+    if (accuracyPct < 40) {
+      accClass = 'accuracy very-low';
+    } else if (accuracyPct < 70) {
+      accClass = 'accuracy low';
+    }
+
+    const item = document.createElement('div');
+    item.className = 'breakdown-item';
+    item.innerHTML = `
+      <div class="breakdown-label">
+        <span class="breakdown-name"><span class="tag-prefix">#</span>${escapeHtml(tag)}</span>
+        <span class="breakdown-stats">${answered}/${total} изучено</span>
+      </div>
+      <div class="breakdown-bars">
+        <div class="breakdown-bar-row">
+          <span class="breakdown-bar-label">Изучение</span>
+          <div class="breakdown-bar-track">
+            <div class="breakdown-bar-fill study" style="width: ${studyPct}%;"></div>
+          </div>
+          <span class="breakdown-bar-pct">${studyPct}%</span>
+        </div>
+        <div class="breakdown-bar-row">
+          <span class="breakdown-bar-label">Точность</span>
+          <div class="breakdown-bar-track">
+            <div class="breakdown-bar-fill ${accClass}" style="width: ${accuracyPct}%;"></div>
+          </div>
+          <span class="breakdown-bar-pct">${accuracyPct}%</span>
+        </div>
+      </div>
+    `;
+    container.appendChild(item);
+  });
+}
+
 
 function sortQuestions(questions, sortBy, stats) {
   return [...questions].sort((a, b) => {
@@ -1941,8 +2342,12 @@ function renderStatsTable() {
 
   let filtered = dbQuestions.filter(q => {
     // 1. Text Search query
-    const matchQuery = q.title.toLowerCase().includes(query) || q.category.toLowerCase().includes(query);
+    const tagsStr = (q.tags || []).join(' ');
+    const matchQuery = q.title.toLowerCase().includes(query) || q.category.toLowerCase().includes(query) || tagsStr.includes(query);
     if (!matchQuery) return false;
+
+    // Tag filter
+    if (statsActiveTag && (!q.tags || !q.tags.includes(statsActiveTag))) return false;
 
     // 2. Category Filter
     if (categoryFilter !== 'all' && q.category !== categoryFilter) return false;
@@ -1995,6 +2400,28 @@ function renderStatsTable() {
 
     info.appendChild(title);
     info.appendChild(sub);
+
+    if (q.tags && q.tags.length > 0) {
+      const tagsRow = document.createElement('div');
+      tagsRow.className = 'tags-row';
+      q.tags.forEach(tag => {
+        const b = document.createElement('span');
+        b.className = 'tag-badge';
+        b.textContent = tag;
+        b.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (statsActiveTag === tag) {
+            statsActiveTag = null;
+          } else {
+            statsActiveTag = tag;
+          }
+          renderStatsTagFilter();
+          renderStatsTable();
+        });
+        tagsRow.appendChild(b);
+      });
+      info.appendChild(tagsRow);
+    }
 
     const meta = document.createElement('div');
     meta.className = 'stats-row-meta';
@@ -2146,8 +2573,12 @@ function renderViewerList() {
 
   let filtered = dbQuestions.filter(q => {
     // 1. Text Search query
-    const matchQuery = q.title.toLowerCase().includes(query) || q.category.toLowerCase().includes(query);
+    const tagsStr = (q.tags || []).join(' ');
+    const matchQuery = q.title.toLowerCase().includes(query) || q.category.toLowerCase().includes(query) || tagsStr.includes(query);
     if (!matchQuery) return false;
+
+    // Tag filter
+    if (viewerActiveTag && (!q.tags || !q.tags.includes(viewerActiveTag))) return false;
 
     // 2. Category Filter
     if (categoryFilter !== 'all' && q.category !== categoryFilter) return false;
@@ -2213,6 +2644,28 @@ function renderViewerList() {
     title.className = 'viewer-card-title';
     title.textContent = `${q.number}. ${q.title}`;
     titleRow.appendChild(title);
+
+    if (q.tags && q.tags.length > 0) {
+      const tagsRow = document.createElement('div');
+      tagsRow.className = 'tags-row';
+      q.tags.forEach(tag => {
+        const b = document.createElement('span');
+        b.className = 'tag-badge';
+        b.textContent = tag;
+        b.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (viewerActiveTag === tag) {
+            viewerActiveTag = null;
+          } else {
+            viewerActiveTag = tag;
+          }
+          renderViewerTagFilter();
+          renderViewerList();
+        });
+        tagsRow.appendChild(b);
+      });
+      header.appendChild(tagsRow);
+    }
 
     const meta = document.createElement('div');
     meta.className = 'viewer-card-meta';

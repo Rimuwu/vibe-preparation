@@ -1,32 +1,44 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Preparation.vibe - Платформа Подготовки</title>
-  
+  <meta name="description"
+    content="Интерактивная платформа для подготовки к экзаменам и собеседованиям. Изучайте вопросы с карточками, отслеживайте прогресс и соревнуйтесь с другими.">
+  <meta name="theme-color" content="#121218">
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
   <!-- Styling -->
-  <link rel="stylesheet" href="styles.css?v=1.0.3">
-  
+  <link rel="stylesheet" href="styles.css?v=1.0.5">
+
   <!-- Prism.js Dark Theme for Code Blocks -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
-  
+
   <!-- Marked.js for Markdown parsing in frontend -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  
+
   <!-- Prism.js for Syntax Highlighting -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
 </head>
+
 <body>
   <div class="app-container">
-    
+
     <!-- Top Header -->
     <header>
       <div class="brand" id="brand-home">
+        <img src="icons/icon-192.png" alt="Logo" class="brand-logo">
         <h1>Preparation.vibe</h1>
-        <svg class="external-link-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="external-link-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="7" y1="17" x2="17" y2="7"></line>
           <polyline points="7 7 17 7 17 17"></polyline>
         </svg>
@@ -34,15 +46,42 @@
       </div>
       <div class="nav-container">
         <button id="btn-menu-toggle" class="btn-icon" title="Меню">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="6" x2="21" y2="6"></line>
             <line x1="3" y1="18" x2="21" y2="18"></line>
           </svg>
         </button>
         <div class="nav-buttons" id="nav-buttons">
+          <button id="btn-show-home" class="btn-icon" title="На главную">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <span class="nav-text">На главную</span>
+          </button>
+          <button id="btn-show-viewer" class="btn-icon" title="Просмотр темы">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <span class="nav-text">Просмотр темы</span>
+          </button>
+          <button id="btn-show-stats" class="btn-icon" title="Статистика">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+            <span class="nav-text">Статистика</span>
+          </button>
           <button id="btn-show-lists" class="btn-icon" title="Мои наборы">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
               <line x1="8" y1="6" x2="21" y2="6"></line>
               <line x1="8" y1="12" x2="21" y2="12"></line>
               <line x1="8" y1="18" x2="21" y2="18"></line>
@@ -52,33 +91,21 @@
             </svg>
             <span class="nav-text">Мои наборы</span>
           </button>
-          <button id="btn-show-stats" class="btn-icon" title="Статистика">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="20" x2="18" y2="10"></line>
-              <line x1="12" y1="20" x2="12" y2="4"></line>
-              <line x1="6" y1="20" x2="6" y2="14"></line>
-            </svg>
-            <span class="nav-text">Статистика</span>
-          </button>
           <button id="btn-show-leaderboard" class="btn-icon" title="Таблица лидеров">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z">
+              </path>
             </svg>
             <span class="nav-text">Лидеры</span>
           </button>
-          <button id="btn-show-viewer" class="btn-icon" title="Просмотр темы">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+          <button id="btn-show-settings" class="btn-icon" title="Настройки">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
             </svg>
-            <span class="nav-text">Просмотр темы</span>
-          </button>
-          <button id="btn-show-home" class="btn-icon" title="На главную">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-              <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
-            <span class="nav-text">На главную</span>
+            <span class="nav-text">Настройки</span>
           </button>
         </div>
       </div>
@@ -92,31 +119,38 @@
           <!-- Dynamic modules list loaded here -->
         </div>
       </div>
-      
+
       <!-- Custom Module Importer Dropzone -->
       <div class="panel">
         <h3 style="font-size: 1rem; margin-bottom: 0.75rem; font-weight: 600;">Загрузить свою тему (.md)</h3>
-        
+
         <div class="form-group">
           <label for="input-module-name">Название темы</label>
           <input type="text" id="input-module-name" class="search-input" placeholder="Например: Основы SQL">
         </div>
-        
+
         <div class="form-group">
           <label for="input-module-desc">Описание темы</label>
-          <textarea id="input-module-desc" class="text-control" placeholder="Краткое описание того, о чем эти вопросы..." style="min-height: 50px;"></textarea>
+          <textarea id="input-module-desc" class="text-control"
+            placeholder="Краткое описание того, о чем эти вопросы..." style="min-height: 50px;"></textarea>
         </div>
 
         <div id="module-dropzone" class="file-dropzone" style="padding: 1.25rem 1rem; margin-bottom: 0.75rem;">
-          <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="width: 24px; height: 24px; margin-bottom: 0.25rem;">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"></path>
+          <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg" aria-hidden="true"
+            style="width: 24px; height: 24px; margin-bottom: 0.25rem;">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z">
+            </path>
           </svg>
           <p id="module-dropzone-text" style="font-size: 0.85rem;">Нажмите или перетащите .md файл</p>
           <input type="file" id="module-file-input" accept=".md" style="display: none;">
         </div>
 
-        <button id="btn-create-empty-module" class="btn-action" style="padding: 0.6rem; font-size: 0.85rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.25rem;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button id="btn-create-empty-module" class="btn-action"
+          style="padding: 0.6rem; font-size: 0.85rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.25rem;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
@@ -128,9 +162,11 @@
     <!-- 0.5. LISTS SCREEN -->
     <main id="screen-lists" class="screen">
       <div class="panel">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div
+          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
           <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0;">Мои наборы вопросов</h2>
-          <button id="btn-create-list-from-screen" class="btn-primary" style="width: auto; padding: 0.5rem 1.25rem; font-size: 0.85rem; border-radius: var(--radius-sm);">
+          <button id="btn-create-list-from-screen" class="btn-primary"
+            style="width: auto; padding: 0.5rem 1.25rem; font-size: 0.85rem; border-radius: var(--radius-sm);">
             + Создать набор
           </button>
         </div>
@@ -147,19 +183,27 @@
         <div style="display: flex; justify-content: space-between; align-items: start; gap: 1rem;">
           <div style="min-width: 0;">
             <span class="brand-badge" style="margin-bottom: 0.5rem; display: inline-block;">Тема</span>
-            <h2 id="current-module-title" style="font-size: 1.2rem; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Загрузка...</h2>
-            <p id="current-module-desc" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;"></p>
+            <h2 id="current-module-title"
+              style="font-size: 1.2rem; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              Загрузка...</h2>
+            <p id="current-module-desc"
+              style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">
+            </p>
           </div>
           <div style="display: flex; flex-direction: column; gap: 0.5rem; flex-shrink: 0;">
-            <button id="btn-view-module" class="btn-action" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.25rem; background: transparent; color: var(--text-main);">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button id="btn-view-module" class="btn-action"
+              style="padding: 0.4rem 0.75rem; font-size: 0.8rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.25rem; background: transparent; color: var(--text-main);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
               </svg>
               Просмотр
             </button>
-            <button id="btn-change-module" class="btn-action" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.25rem; background: transparent; color: var(--text-main);">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button id="btn-change-module" class="btn-action"
+              style="padding: 0.4rem 0.75rem; font-size: 0.8rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: flex; align-items: center; gap: 0.25rem; background: transparent; color: var(--text-main);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="16 3 21 8 16 13"></polyline>
                 <line x1="21" y1="8" x2="9" y2="8"></line>
                 <polyline points="8 21 3 16 8 11"></polyline>
@@ -173,7 +217,7 @@
 
       <div class="panel">
         <h2 style="font-size: 1.25rem; margin-bottom: 1rem; font-weight: 700;">Настройки обучения</h2>
-        
+
         <div class="form-group">
           <label for="select-category">Раздел / Категория</label>
           <select id="select-category" class="select-control">
@@ -209,16 +253,46 @@
         </div>
 
         <div class="form-group" style="margin-top: 1.25rem; margin-bottom: 0.25rem;">
-          <label class="checkbox-label" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-weight: normal; font-size: 0.95rem; user-select: none;">
-            <input type="checkbox" id="chk-only-difficult" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--warning);">
+          <label class="checkbox-label"
+            style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-weight: normal; font-size: 0.95rem; user-select: none;">
+            <input type="checkbox" id="chk-only-difficult"
+              style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--warning);">
             <span>Только сложные вопросы ★</span>
           </label>
         </div>
       </div>
 
+      <!-- GitHub Star Banner (non-dismissible) -->
+      <div id="github-star-banner" class="github-star-banner" style="display:none;">
+        <div class="github-star-banner-content">
+          <div class="github-star-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+              <polygon
+                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+              </polygon>
+            </svg>
+          </div>
+          <div class="github-star-text">
+            <p>Нравится проект? Поставьте звезду на <strong>GitHub</strong> — это помогает проекту развиваться! 🚀</p>
+          </div>
+          <div class="github-star-actions">
+            <a href="https://github.com/Rimuwu/vibe-preparation" target="_blank" rel="noopener noreferrer"
+              class="btn-star-github" id="btn-star-github">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <polygon
+                  points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                </polygon>
+              </svg>
+              ⭐ Поставить звезду
+            </a>
+          </div>
+        </div>
+      </div>
+
       <button id="btn-start-session" class="btn-primary">
         Начать подготовку
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
           <polygon points="5 3 19 12 5 21 5 3"></polygon>
         </svg>
       </button>
@@ -227,7 +301,7 @@
     <!-- 2. STUDY SCREEN -->
     <section id="screen-study" class="screen">
       <div class="study-area">
-        
+
         <!-- Progress Bar and Score -->
         <div class="top-bar">
           <div class="progress-container">
@@ -241,13 +315,15 @@
           </div>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
             <button id="btn-edit-current-question" class="btn-icon" title="Редактировать вопрос/ответ">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                 <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
               </svg>
             </button>
             <button id="btn-exit-study" class="btn-icon" title="Завершить сессию">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
@@ -258,13 +334,15 @@
         <!-- Flipper Card Viewport -->
         <div class="card-viewport">
           <div class="card" id="study-card">
-            
+
             <!-- Card Front -->
             <div class="card-face card-front">
 
               <div id="card-starred" class="starred-badge" style="display: none;">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                  <polygon
+                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                  </polygon>
                 </svg>
               </div>
               <div class="q-meta" id="card-front-meta">Теория • Вопрос 1</div>
@@ -281,7 +359,7 @@
                   <h4>Краткий ответ / Код</h4>
                   <div class="answer-text markdown-body" id="card-short-answer"></div>
                 </div>
-                
+
                 <!-- Detailed Answer / Explanation -->
                 <div id="sec-detailed-ans">
                   <h4>Подробное пояснение</h4>
@@ -290,13 +368,13 @@
               </div>
               <div class="card-instructions">Нажмите для возврата к вопросу</div>
             </div>
-            
+
           </div>
         </div>
 
         <!-- Controls panel (Fuzzy matching input / test choices / self-rating) -->
         <div class="panel action-area" style="margin-bottom: 0;">
-          
+
           <!-- Test choices (Hidden by default) -->
           <div id="choice-container" class="options-grid" style="display: none;">
             <!-- Buttons dynamically generated -->
@@ -306,29 +384,34 @@
           <div id="input-container" class="text-input-group" style="display: none;">
             <label for="typed-answer" style="font-size: 0.8rem; color: var(--text-muted);">Введите ваш ответ:</label>
             <textarea id="typed-answer" class="text-control" placeholder="Напишите ответ своими словами..."></textarea>
-            <button id="btn-submit-answer" class="btn-primary" style="padding: 0.6rem; font-size: 0.9rem;">Проверить ответ</button>
+            <button id="btn-submit-answer" class="btn-primary" style="padding: 0.6rem; font-size: 0.9rem;">Проверить
+              ответ</button>
             <div id="input-feedback" class="input-feedback"></div>
           </div>
 
           <!-- Free-mode self-study answer notepad -->
           <div id="free-input-container" class="text-input-group" style="display: none;">
-            <label for="free-typed-answer" style="font-size: 0.8rem; color: var(--text-muted);">Запишите ответ для себя (перед проверкой):</label>
-            <textarea id="free-typed-answer" class="text-control" placeholder="Напишите ответ своими словами перед переворотом карточки..."></textarea>
+            <label for="free-typed-answer" style="font-size: 0.8rem; color: var(--text-muted);">Запишите ответ для себя
+              (перед проверкой):</label>
+            <textarea id="free-typed-answer" class="text-control"
+              placeholder="Напишите ответ своими словами перед переворотом карточки..."></textarea>
           </div>
 
           <!-- Evaluation control buttons -->
           <div class="study-controls">
             <button id="btn-incorrect" class="btn-action btn-incorrect">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
                 <line x1="15" y1="9" x2="9" y2="15"></line>
                 <line x1="9" y1="9" x2="15" y2="15"></line>
               </svg>
               Неправильно
             </button>
-            
+
             <button id="btn-correct" class="btn-action btn-correct">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="20 6 9 17 4 12"></polyline>
               </svg>
               Правильно
@@ -341,7 +424,8 @@
 
             <!-- Back to previous question -->
             <button id="btn-prev-question" class="btn-action btn-prev-quest" title="Вернуться к предыдущему вопросу">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="15 18 9 12 15 6"></polyline>
               </svg>
               Назад
@@ -349,13 +433,16 @@
 
             <!-- Mark as Difficult -->
             <button id="btn-difficult" class="btn-action btn-difficult-toggle">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:0.25rem;">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" style="margin-right:0.25rem;">
+                <polygon
+                  points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                </polygon>
               </svg>
               <span>Сложный вопрос</span>
             </button>
           </div>
-          
+
         </div>
 
         <!-- PC Keyboard Shortcut Help -->
@@ -366,7 +453,7 @@
             <div class="key-tip"><span class="key-btn">D</span> / <span class="key-btn">↑</span> Сложный</div>
             <div class="key-tip"><span class="key-btn">1</span> / <span class="key-btn">←</span> Неправильно</div>
             <div class="key-tip"><span class="key-btn">2</span> / <span class="key-btn">→</span> Правильно</div>
-            <div class="key-tip" style="grid-column: span 2;"><span class="key-btn" style="min-width: 60px;">Backspace</span> Предыдущий вопрос</div>
+            <div class="key-tip"><span class="key-btn">Backspace</span> Предыдущий вопрос</div>
           </div>
         </div>
 
@@ -379,15 +466,19 @@
         <div class="stats-header">
           <h2 style="font-size: 1.25rem; font-weight: 700;">Общая статистика</h2>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <button id="btn-share-stats" class="btn-icon" style="color: var(--primary); border-color: rgba(138, 180, 248, 0.2);" title="Поделиться прогрессом">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button id="btn-share-stats" class="btn-icon"
+              style="color: var(--primary); border-color: rgba(138, 180, 248, 0.2);" title="Поделиться прогрессом">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
                 <polyline points="16 6 12 2 8 6"></polyline>
                 <line x1="12" y1="2" x2="12" y2="15"></line>
               </svg>
             </button>
-            <button id="btn-reset-stats" class="btn-icon" style="color: var(--error); border-color: rgba(239, 68, 68, 0.2);" title="Сбросить прогресс">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button id="btn-reset-stats" class="btn-icon"
+              style="color: var(--error); border-color: rgba(239, 68, 68, 0.2);" title="Сбросить прогресс">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="3 6 5 6 21 6"></polyline>
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
               </svg>
@@ -412,100 +503,91 @@
             <div id="stat-attempts" class="num">0</div>
             <div class="label">Ответы</div>
           </div>
+          <div class="stat-card" id="stat-tags-card" style="display:none;">
+            <div id="stat-tags-learned" class="num">0/0</div>
+            <div class="label">Изучено тегов</div>
+          </div>
         </div>
       </div>
 
-      <!-- Cloud Sync & Backup Panel -->
-      <div class="panel">
-        <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">Синхронизация и резервная копия</h2>
-        
-        <!-- Cloud Sync Sub-section -->
-        <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
-          <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">Облачная синхронизация</h3>
-          
-          <!-- Status Indicator -->
-          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
-            <span style="font-size: 0.9rem; color: var(--text-muted);">Статус:</span>
-            <span id="sync-status-badge" class="brand-badge" style="background: rgba(158, 158, 158, 0.15); color: var(--text-muted); border-color: rgba(158, 158, 158, 0.3);">Локальный режим</span>
+      <!-- Settings shortcut panel -->
+      <div class="panel settings-link-panel">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem;">
+          <div>
+            <h3 style="font-size:0.95rem; font-weight:600; margin-bottom:0.2rem;">Синхронизация и резервная копия</h3>
+            <p style="font-size:0.8rem; color:var(--text-muted); margin:0;">Управляйте синхронизацией и экспортом прогресса в настройках</p>
           </div>
-
-          <!-- Setup Actions -->
-          <div id="sync-setup-actions" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-            <button id="btn-generate-sync-code" class="btn-primary" style="flex: 1; min-width: 160px; border-radius: var(--radius-sm); font-size: 0.85rem; padding: 0.6rem 1rem;">
-              Передать данные (Сгенерировать код)
-            </button>
-            <button id="btn-enter-sync-code" class="btn-action" style="flex: 1; min-width: 160px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); font-size: 0.85rem; padding: 0.6rem 1rem; border: 1px solid var(--border-color);">
-              Принять данные (Ввести код)
-            </button>
-          </div>
-
-          <!-- Connected Actions -->
-          <div id="sync-connected-actions" style="display: none; flex-direction: column; gap: 0.75rem;">
-            <div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
-              Код синхронизации: <strong id="sync-code-display" style="color: var(--primary); font-size: 1rem; letter-spacing: 0.05em;">VIBE-XXXX-YYYY</strong>
-              <br>Используйте этот код на других устройствах, чтобы связать их с этим прогрессом.
-            </div>
-            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.25rem;">
-              <button id="btn-sync-now" class="btn-primary" style="flex: 1; min-width: 160px; border-radius: var(--radius-sm); font-size: 0.85rem; padding: 0.6rem 1rem;">
-                Обновить (Синхронизировать)
-              </button>
-              <button id="btn-disconnect-sync" class="btn-action" style="flex: 1; min-width: 160px; border-radius: var(--radius-sm); border: 1px solid var(--error); background: var(--error-dark); color: var(--error); font-size: 0.85rem; padding: 0.6rem 1rem; border: 1px solid var(--error);">
-                Отключить синхронизацию
-              </button>
-            </div>
-          </div>
+          <button id="btn-goto-settings-from-stats" class="btn-action"
+            style="padding:0.5rem 1rem; font-size:0.82rem; white-space:nowrap; border:1px solid var(--border-color); background:transparent; color:var(--text-main); border-radius:var(--radius-sm); display:flex; align-items:center; gap:0.35rem; flex-shrink:0;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            Настройки
+          </button>
         </div>
+      </div>
 
-        <div style="height: 1px; background: var(--border-color); margin-bottom: 1.25rem;"></div>
+      <!-- Breakdown by Categories -->
+      <div class="panel" id="stats-categories-panel">
+        <div class="breakdown-panel-header">
+          <h3 style="font-size: 1rem; font-weight: 600; margin: 0;">📂 Прогресс по разделам</h3>
+          <button id="btn-collapse-categories" class="btn-collapse-breakdown" title="Свернуть/развернуть">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round" class="collapse-icon">
+              <polyline points="18 15 12 9 6 15"></polyline>
+            </svg>
+          </button>
+        </div>
+        <div id="stats-categories-breakdown" class="breakdown-collapsible">
+          <!-- Dynamic category breakdown -->
+        </div>
+      </div>
 
-        <!-- Local Backup Sub-section -->
-        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-          <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 0; margin-bottom: 0.25rem;">Локальный бэкап</h3>
-          <div style="display: flex; gap: 0.75rem;">
-            <button id="btn-export-progress" class="btn-primary" style="padding: 0.6rem 1rem; font-size: 0.85rem; width: auto; flex-grow: 1; border-radius: 100px;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-              Экспорт прогресса
-            </button>
-            <button id="btn-import-progress-trigger" class="btn-action" style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--border-color); flex-grow: 1; border-radius: 100px; background: transparent; color: var(--text-main); border: 1px solid var(--border-color);">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-              </svg>
-              Импорт прогресса
-            </button>
-            <input type="file" id="import-progress-input" accept=".json" style="display: none;">
-          </div>
+      <!-- Breakdown by Tags -->
+      <div class="panel" id="stats-tags-panel">
+        <div class="breakdown-panel-header">
+          <h3 style="font-size: 1rem; font-weight: 600; margin: 0;">🏷️ Прогресс по тегам</h3>
+          <button id="btn-collapse-tags" class="btn-collapse-breakdown" title="Свернуть/развернуть">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round" class="collapse-icon">
+              <polyline points="18 15 12 9 6 15"></polyline>
+            </svg>
+          </button>
+        </div>
+        <div id="stats-tags-breakdown" class="breakdown-collapsible">
+          <!-- Dynamic tag breakdown -->
         </div>
       </div>
 
       <div class="panel" style="flex-grow: 1;">
         <h3 style="font-size: 1rem; margin-bottom: 0.75rem; font-weight: 600;">Детализация по вопросам</h3>
-        
+
         <div class="search-box">
-          <input type="text" id="stats-search" class="search-input" placeholder="Поиск по вопросам...">
+          <input type="text" id="stats-search" class="search-input" placeholder="Поиск по вопросам и тегам...">
         </div>
 
-        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
-          <select id="stats-category-filter" class="select-control" style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+          <select id="stats-category-filter" class="select-control"
+            style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
             <option value="all">Все разделы</option>
           </select>
-          <select id="stats-correct-filter" class="select-control" style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+          <select id="stats-correct-filter" class="select-control"
+            style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
             <option value="all">Все по правильности</option>
             <option value="correct">Верно отвеченные</option>
             <option value="incorrect">Неверно отвеченные</option>
             <option value="unanswered">Не отвеченные</option>
           </select>
-          <select id="stats-difficulty-filter" class="select-control" style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+          <select id="stats-difficulty-filter" class="select-control"
+            style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
             <option value="all">Все по сложности</option>
             <option value="difficult">Сложные</option>
             <option value="normal">Не сложные</option>
           </select>
-          <select id="stats-sort-by" class="select-control" style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+          <select id="stats-sort-by" class="select-control"
+            style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
             <option value="number_asc">По номеру ↑</option>
             <option value="number_desc">По номеру ↓</option>
             <option value="accuracy_asc">По точности ↑</option>
@@ -516,6 +598,9 @@
             <option value="easy_first">Сначала простые</option>
           </select>
         </div>
+
+        <!-- Tag filter chips -->
+        <div id="stats-tag-filter" class="tag-filter-bar" style="display:none;"></div>
 
         <div id="stats-list" class="stats-list">
           <!-- Dynamic stats rows loaded here -->
@@ -527,9 +612,13 @@
     <section id="screen-viewer" class="screen">
       <div class="panel" style="margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h2 id="viewer-title" style="font-size: 1.25rem; font-weight: 700; margin-right: 1rem; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Просмотр темы</h2>
-          <button id="btn-viewer-back" class="btn-action" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; border-color: var(--border-color); flex-shrink: 0; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); display: flex; align-items: center; gap: 0.25rem;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <h2 id="viewer-title"
+            style="font-size: 1.25rem; font-weight: 700; margin-right: 1rem; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            Просмотр темы</h2>
+          <button id="btn-viewer-back" class="btn-action"
+            style="padding: 0.4rem 0.75rem; font-size: 0.8rem; border-color: var(--border-color); flex-shrink: 0; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); display: flex; align-items: center; gap: 0.25rem;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
               <line x1="19" y1="12" x2="5" y2="12"></line>
               <polyline points="12 19 5 12 12 5"></polyline>
             </svg>
@@ -537,50 +626,66 @@
           </button>
         </div>
         <p id="viewer-desc" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;"></p>
-        
+
         <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
-          <button id="btn-viewer-toggle-all" class="btn-action" style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); white-space: nowrap; display: flex; align-items: center; gap: 0.25rem;">
+          <button id="btn-viewer-toggle-all" class="btn-action"
+            style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); white-space: nowrap; display: flex; align-items: center; gap: 0.25rem;">
             Свернуть все
           </button>
-          <button id="btn-viewer-export-md" class="btn-action" style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); white-space: nowrap; display: flex; align-items: center; gap: 0.25rem;">
+          <button id="btn-viewer-export-md" class="btn-action"
+            style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); white-space: nowrap; display: flex; align-items: center; gap: 0.25rem;">
             Экспорт в .md
           </button>
-          <button id="btn-viewer-select-mode" class="btn-action" style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--warning); border-radius: var(--radius-sm); border: 1px solid var(--warning); background: var(--warning-dark); color: var(--warning); white-space: nowrap; display: flex; align-items: center; gap: 0.25rem;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <button id="btn-viewer-select-mode" class="btn-action"
+            style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--warning); border-radius: var(--radius-sm); border: 1px solid var(--warning); background: var(--warning-dark); color: var(--warning); white-space: nowrap; display: flex; align-items: center; gap: 0.25rem;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
               <path d="M9 11l3 3L22 4"></path>
               <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
             </svg>
             <span>Собрать набор</span>
           </button>
-          <button id="btn-viewer-add-question" class="btn-action" style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--primary); border-radius: var(--radius-sm); border: 1px solid var(--primary); background: var(--primary-dark); color: var(--primary); white-space: nowrap; display: flex; align-items: center; gap: 0.25rem;">
+          <button id="btn-viewer-add-question" class="btn-action"
+            style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--primary); border-radius: var(--radius-sm); border: 1px solid var(--primary); background: var(--primary-dark); color: var(--primary); white-space: nowrap; display: flex; align-items: center; gap: 0.25rem;">
             + Вопрос
           </button>
         </div>
       </div>
 
-      <div class="panel" style="margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.75rem; padding: 1.25rem;">
-        <h3 style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.15rem;">Поиск и фильтрация</h3>
-        
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <input type="text" id="viewer-search" class="search-input" placeholder="Поиск по вопросам..." style="flex-grow: 1; min-width: 150px;">
-        </div>
+      <div class="panel"
+        style="margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.75rem; padding: 1.25rem;">
+        <h3
+          style="font-size: 0.8rem; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.15rem;">
+          Поиск и фильтрация</h3>
 
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <select id="viewer-category-filter" class="select-control" style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+          <input type="text" id="viewer-search" class="search-input" placeholder="Поиск по вопросам и тегам..."
+            style="flex-grow: 1; min-width: 150px;">
+        </div>
+
+        <!-- Tag filter chips for viewer -->
+        <div id="viewer-tag-filter" class="tag-filter-bar" style="display:none;"></div>
+
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <select id="viewer-category-filter" class="select-control"
+            style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
             <option value="all">Все разделы</option>
           </select>
-          <select id="viewer-correct-filter" class="select-control" style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+          <select id="viewer-correct-filter" class="select-control"
+            style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
             <option value="all">Все по правильности</option>
             <option value="correct">Верно отвеченные</option>
             <option value="incorrect">Неверно отвеченные</option>
             <option value="unanswered">Не отвеченные</option>
           </select>
-          <select id="viewer-difficulty-filter" class="select-control" style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+          <select id="viewer-difficulty-filter" class="select-control"
+            style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
             <option value="all">Все по сложности</option>
             <option value="difficult">Сложные</option>
             <option value="normal">Не сложные</option>
           </select>
-          <select id="viewer-sort-by" class="select-control" style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
+          <select id="viewer-sort-by" class="select-control"
+            style="flex: 1; min-width: 120px; padding: 0.5rem 0.75rem; font-size: 0.85rem;">
             <option value="number_asc">По номеру ↑</option>
             <option value="number_desc">По номеру ↓</option>
             <option value="accuracy_asc">По точности ↑</option>
@@ -593,17 +698,114 @@
         </div>
       </div>
 
-      <div id="viewer-questions-list" class="stats-list" style="max-height: none; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding-bottom: 1rem;">
+      <div id="viewer-questions-list" class="stats-list"
+        style="max-height: none; flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding-bottom: 1rem;">
         <!-- Collapsible cards render here -->
       </div>
-      
+
       <!-- Bottom selection mode panel -->
       <div id="viewer-selection-panel" class="selection-panel" style="display: none;">
         <div class="selection-panel-content">
           <span id="viewer-selection-count">Выбрано вопросов: 0</span>
-          <div style="display: flex; gap: 0.5rem;">
-            <button id="btn-viewer-cancel-selection" class="btn-action" style="border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); font-size: 0.85rem; padding: 0.5rem 1rem;">Отмена</button>
-            <button id="btn-viewer-create-list" class="btn-primary" style="width: auto; border-radius: var(--radius-sm); font-size: 0.85rem; padding: 0.5rem 1rem;">Создать список</button>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end;">
+            <button id="btn-viewer-select-all-filtered" class="btn-action"
+              style="border-radius: var(--radius-sm); border: 1px solid var(--primary); background: var(--primary-dark); color: var(--primary); font-size: 0.82rem; padding: 0.5rem 0.85rem; white-space: nowrap;">+ Все фильтры</button>
+            <button id="btn-viewer-clear-selection" class="btn-action"
+              style="border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-muted); font-size: 0.82rem; padding: 0.5rem 0.85rem;">Очистить</button>
+            <button id="btn-viewer-cancel-selection" class="btn-action"
+              style="border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); font-size: 0.85rem; padding: 0.5rem 1rem;">Отмена</button>
+            <button id="btn-viewer-create-list" class="btn-primary"
+              style="width: auto; border-radius: var(--radius-sm); font-size: 0.85rem; padding: 0.5rem 1rem;">Создать список</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5.5 SETTINGS SCREEN -->
+    <section id="screen-settings" class="screen">
+      <div class="panel">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem;">
+          <h2 style="font-size: 1.25rem; font-weight: 700; margin:0;">⚙️ Настройки</h2>
+          <button id="btn-settings-back" class="btn-action"
+            style="padding: 0.4rem 0.75rem; font-size: 0.8rem; border: 1px solid var(--border-color); background: transparent; color: var(--text-main); border-radius: var(--radius-sm); display: flex; align-items: center; gap: 0.25rem;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Назад
+          </button>
+        </div>
+
+        <!-- Cloud Sync Sub-section -->
+        <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
+          <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">
+            Облачная синхронизация</h3>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+            <span style="font-size: 0.9rem; color: var(--text-muted);">Статус:</span>
+            <span id="sync-status-badge" class="brand-badge"
+              style="background: rgba(158, 158, 158, 0.15); color: var(--text-muted); border-color: rgba(158, 158, 158, 0.3);">Локальный режим</span>
+          </div>
+
+          <div id="sync-setup-actions" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <button id="btn-generate-sync-code" class="btn-primary"
+              style="flex: 1; min-width: 160px; border-radius: var(--radius-sm); font-size: 0.85rem; padding: 0.6rem 1rem;">
+              Передать данные (Сгенерировать код)
+            </button>
+            <button id="btn-enter-sync-code" class="btn-action"
+              style="flex: 1; min-width: 160px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); font-size: 0.85rem; padding: 0.6rem 1rem;">
+              Принять данные (Ввести код)
+            </button>
+          </div>
+
+          <div id="sync-connected-actions" style="display: none; flex-direction: column; gap: 0.75rem;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
+              Код синхронизации: <strong id="sync-code-display"
+                style="color: var(--primary); font-size: 1rem; letter-spacing: 0.05em;">VIBE-XXXX-YYYY</strong>
+              <br>Используйте этот код на других устройствах, чтобы связать их с этим прогрессом.
+            </div>
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.25rem;">
+              <button id="btn-sync-now" class="btn-primary"
+                style="flex: 1; min-width: 160px; border-radius: var(--radius-sm); font-size: 0.85rem; padding: 0.6rem 1rem;">
+                Обновить (Синхронизировать)
+              </button>
+              <button id="btn-disconnect-sync" class="btn-action"
+                style="flex: 1; min-width: 160px; border-radius: var(--radius-sm); border: 1px solid var(--error); background: var(--error-dark); color: var(--error); font-size: 0.85rem; padding: 0.6rem 1rem;">
+                Отключить синхронизацию
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div style="height: 1px; background: var(--border-color); margin-bottom: 1.25rem;"></div>
+
+        <!-- Local Backup Sub-section -->
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 0.25rem 0;">
+            Локальный бэкап</h3>
+          <div style="display: flex; gap: 0.75rem;">
+            <button id="btn-export-progress" class="btn-primary"
+              style="padding: 0.6rem 1rem; font-size: 0.85rem; width: auto; flex-grow: 1; border-radius: 100px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Экспорт прогресса
+            </button>
+            <button id="btn-import-progress-trigger" class="btn-action"
+              style="padding: 0.6rem 1rem; font-size: 0.85rem; border-color: var(--border-color); flex-grow: 1; border-radius: 100px; background: transparent; color: var(--text-main); border: 1px solid var(--border-color);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              Импорт прогресса
+            </button>
+            <input type="file" id="import-progress-input" accept=".json" style="display: none;">
           </div>
         </div>
       </div>
@@ -617,9 +819,11 @@
         <div style="display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;">
           <div class="form-group" style="flex-grow: 1; margin-bottom: 0; min-width: 200px;">
             <label for="input-nickname">Ваше имя в таблице</label>
-            <input type="text" id="input-nickname" class="search-input" placeholder="Например: Ivan_JS" style="width: 100%;">
+            <input type="text" id="input-nickname" class="search-input" placeholder="Например: Ivan_JS"
+              style="width: 100%;">
           </div>
-          <button id="btn-save-nickname" class="btn-primary" style="width: auto; padding: 0.75rem 1.5rem; height: 46px; border-radius: var(--radius-sm); font-size: 0.9rem;">
+          <button id="btn-save-nickname" class="btn-primary"
+            style="width: auto; padding: 0.75rem 1.5rem; height: 46px; border-radius: var(--radius-sm); font-size: 0.9rem;">
             Сохранить
           </button>
         </div>
@@ -629,20 +833,25 @@
 
       <!-- Leaderboard Panel -->
       <div class="panel" style="flex-grow: 1; display: flex; flex-direction: column;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+        <div
+          style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
           <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0;">Таблица лидеров</h2>
           <div style="display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; justify-content: flex-end;">
-            <label for="leaderboard-module-select" style="font-size: 0.8rem; color: var(--text-muted); margin: 0; white-space: nowrap;">Тема:</label>
-            <select id="leaderboard-module-select" class="select-control" style="width: auto; max-width: 250px; padding: 0.4rem 0.75rem; font-size: 0.85rem; height: 36px; border-radius: var(--radius-sm);">
+            <label for="leaderboard-module-select"
+              style="font-size: 0.8rem; color: var(--text-muted); margin: 0; white-space: nowrap;">Тема:</label>
+            <select id="leaderboard-module-select" class="select-control"
+              style="width: auto; max-width: 250px; padding: 0.4rem 0.75rem; font-size: 0.85rem; height: 36px; border-radius: var(--radius-sm);">
               <!-- Standard modules only -->
             </select>
           </div>
         </div>
 
         <div id="leaderboard-container" style="overflow-x: auto; flex-grow: 1;">
-          <table class="leaderboard-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+          <table class="leaderboard-table"
+            style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
             <thead>
-              <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">
+              <tr
+                style="border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">
                 <th style="padding: 0.75rem 0.5rem; width: 60px;">Место</th>
                 <th style="padding: 0.75rem 0.5rem;">Пользователь</th>
                 <th style="padding: 0.75rem 0.5rem; text-align: center; width: 100px;">Пройдено</th>
@@ -674,13 +883,25 @@
         <!-- Content injected dynamically -->
       </div>
       <div class="modal-footer" id="modal-footer">
-        <button id="modal-btn-cancel" class="btn-action" style="border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main);">Отмена</button>
-        <button id="modal-btn-ok" class="btn-primary" style="width: auto; border-radius: var(--radius-sm); padding: 0.6rem 1.25rem;">ОК</button>
+        <button id="modal-btn-cancel" class="btn-action"
+          style="border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main);">Отмена</button>
+        <button id="modal-btn-ok" class="btn-primary"
+          style="width: auto; border-radius: var(--radius-sm); padding: 0.6rem 1.25rem;">ОК</button>
       </div>
     </div>
   </div>
 
   <!-- Main scripts -->
-  <script type="module" src="app.js?v=1.0.3"></script>
+  <script type="module" src="app.js?v=1.0.4"></script>
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => { });
+      });
+    }
+  </script>
 </body>
+
 </html>

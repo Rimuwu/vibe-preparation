@@ -26,7 +26,13 @@ export function parseMarkdown(mdText) {
 
       const headerText = trimmed.replace(/^###\s+/, '');
       const isStarred = headerText.includes('[!]');
-      const titleClean = headerText.replace(/\[!\]\s*/, '').trim();
+      let titleClean = headerText.replace(/\[!\]\s*/, '').trim();
+
+      // Extract tags (#tagname) from the header
+      const tagMatches = [...titleClean.matchAll(/#([a-zA-Zа-яА-ЯёЁ0-9_-]+)/g)];
+      const tags = tagMatches.map(m => m[1].toLowerCase());
+      // Remove tags from title text
+      titleClean = titleClean.replace(/#[a-zA-Zа-яА-ЯёЁ0-9_-]+/g, '').replace(/\s{2,}/g, ' ').trim();
 
       // Extract number if formatted as "1. Title"
       const numberMatch = titleClean.match(/^(\d+)\.\s*(.*)/);
@@ -43,6 +49,7 @@ export function parseMarkdown(mdText) {
         isStarred: isStarred,
         category: currentCategory,
         title: questionText,
+        tags: tags,
         lines: [],
         type: 'free' // Default type
       };

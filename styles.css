@@ -111,6 +111,13 @@ header {
   cursor: pointer;
 }
 
+.brand-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
 .brand h1 {
   font-size: 1.5rem;
   font-weight: 500;
@@ -383,18 +390,19 @@ header {
 .card-viewport {
   perspective: 1000px;
   width: 100%;
-  min-height: 300px;
-  height: calc(100vh - 440px);
-  margin-bottom: 1.5rem;
+  min-height: 260px;
+  height: calc(100vh - 450px);
+  margin-bottom: 1rem;
   position: relative;
 }
 
 @media (max-height: 600px) {
   .card-viewport {
-    min-height: 220px;
-    height: calc(100vh - 340px);
+    min-height: 180px;
+    height: calc(100vh - 320px);
   }
 }
+
 
 .card {
   width: 100%;
@@ -846,9 +854,15 @@ header {
   margin-bottom: 1.5rem;
 }
 
+@media (min-width: 600px) {
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 @media (min-width: 768px) {
   .stats-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
   }
 }
 
@@ -1010,26 +1024,32 @@ header {
 @media (min-width: 1024px) {
   .keyboard-help {
     display: block;
-    margin-top: 1.5rem;
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.01);
+    margin-top: 0.75rem;
+    padding: 0.65rem 1rem;
+    background: rgba(255, 255, 255, 0.015);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     color: var(--text-muted);
   }
 
+  .keyboard-help p {
+    margin-bottom: 0.4rem;
+    font-size: 0.78rem;
+  }
+
   .keyboard-help-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
-    margin-top: 0.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1rem;
+    margin-top: 0.35rem;
   }
 
   .key-tip {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem;
+    white-space: nowrap;
   }
 
   .key-btn {
@@ -1039,34 +1059,11 @@ header {
     padding: 0.1rem 0.4rem;
     border-radius: 4px;
     font-family: monospace;
+    font-size: 0.76rem;
     color: var(--text-main);
   }
 }
 
-@media (min-width: 1200px) {
-  .keyboard-help {
-    position: fixed;
-    top: 50%;
-    left: calc(50% + 350px + 24px);
-    transform: translateY(-50%);
-    width: 250px;
-    margin-top: 0 !important;
-    background: var(--panel-bg) !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--border-color);
-    padding: 1.25rem 1rem !important;
-    z-index: 90;
-  }
-
-  .keyboard-help-grid {
-    grid-template-columns: 1fr !important;
-    gap: 0.75rem !important;
-  }
-
-  .keyboard-help-grid .key-tip {
-    grid-column: span 1 !important;
-  }
-}
 
 /* Viewer Screen Collapsible Cards */
 .viewer-card {
@@ -1534,4 +1531,398 @@ header {
 
 #leaderboard-tbody tr td {
   vertical-align: middle;
+}
+
+/* ========================================
+   TAG BADGES
+   ======================================== */
+
+.tag-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: 100px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  background: rgba(138, 180, 248, 0.12);
+  color: var(--primary);
+  border: 1px solid rgba(138, 180, 248, 0.25);
+  cursor: pointer;
+  transition: var(--transition);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.tag-badge:hover {
+  background: rgba(138, 180, 248, 0.22);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.tag-badge.active {
+  background: var(--primary);
+  color: #1a1a2e;
+  border-color: var(--primary);
+  font-weight: 600;
+}
+
+.tag-badge::before {
+  content: '#';
+  opacity: 0.6;
+  font-size: 0.68rem;
+}
+
+.tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.4rem;
+}
+
+/* Tag filter bar (chip cloud) */
+.tag-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--border-color);
+  margin-top: 0.25rem;
+  animation: fadeIn 0.2s ease;
+}
+
+.tag-filter-bar .tag-badge {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.6rem;
+}
+
+/* Card-front meta tags */
+#card-front-meta .tags-row {
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+/* ========================================
+   STATS BREAKDOWN PANELS (categories & tags)
+   ======================================== */
+
+.breakdown-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.breakdown-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  transition: var(--transition);
+}
+
+.breakdown-item:hover {
+  border-color: var(--border-hover);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.breakdown-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.breakdown-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-main);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  margin-right: 0.5rem;
+}
+
+.breakdown-name .tag-prefix {
+  color: var(--primary);
+  opacity: 0.7;
+  font-size: 0.8rem;
+}
+
+.breakdown-stats {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.breakdown-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.breakdown-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.breakdown-bar-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  width: 55px;
+  flex-shrink: 0;
+}
+
+.breakdown-bar-track {
+  flex: 1;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.breakdown-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.breakdown-bar-fill.study {
+  background: linear-gradient(90deg, var(--primary) 0%, #a8c7fa 100%);
+}
+
+.breakdown-bar-fill.accuracy {
+  background: linear-gradient(90deg, var(--success) 0%, #a3e2b7 100%);
+}
+
+.breakdown-bar-fill.accuracy.low {
+  background: linear-gradient(90deg, var(--warning) 0%, #ffe082 100%);
+}
+
+.breakdown-bar-fill.accuracy.very-low {
+  background: linear-gradient(90deg, var(--error) 0%, #f6aea9 100%);
+}
+
+.breakdown-bar-pct {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  width: 32px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+#stats-categories-panel,
+#stats-tags-panel {
+  /* Initially collapsed if empty */
+}
+
+/* ========================================
+   GITHUB STAR BANNER
+   ======================================== */
+
+.github-star-banner {
+  background: linear-gradient(135deg, rgba(255, 202, 40, 0.08) 0%, rgba(138, 180, 248, 0.08) 100%);
+  border: 1px solid rgba(255, 202, 40, 0.25);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  animation: slideDown 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.github-star-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.github-star-icon {
+  color: #ffca28;
+  flex-shrink: 0;
+  animation: starPulse 2s ease-in-out infinite;
+}
+
+@keyframes starPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+.github-star-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.github-star-text p {
+  font-size: 0.875rem;
+  color: var(--text-main);
+  line-height: 1.4;
+}
+
+.github-star-text strong {
+  color: #ffffff;
+}
+
+.github-star-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.btn-star-github {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.85rem;
+  background: rgba(255, 202, 40, 0.15);
+  color: #ffca28;
+  border: 1px solid rgba(255, 202, 40, 0.4);
+  border-radius: 100px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  text-decoration: none;
+  transition: var(--transition);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-star-github:hover {
+  background: rgba(255, 202, 40, 0.25);
+  border-color: #ffca28;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 202, 40, 0.2);
+}
+
+.btn-banner-dismiss {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  padding: 0.35rem;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.btn-banner-dismiss:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+  border-color: var(--border-color);
+}
+
+@media (max-width: 480px) {
+  .github-star-banner-content {
+    flex-wrap: wrap;
+  }
+  .github-star-text p {
+    font-size: 0.82rem;
+  }
+  .btn-star-github {
+    font-size: 0.78rem;
+    padding: 0.35rem 0.7rem;
+  }
+}
+
+/* ========================================
+   BREAKDOWN PANEL — COLLAPSIBLE HEADER
+   ======================================== */
+
+.breakdown-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.85rem;
+}
+
+.btn-collapse-breakdown {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 0.35rem;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.btn-collapse-breakdown:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-main);
+  border-color: var(--border-hover);
+}
+
+.btn-collapse-breakdown .collapse-icon {
+  transition: transform 0.25s ease;
+}
+
+/* Collapsible content area */
+.breakdown-collapsible {
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  max-height: 9999px;
+  opacity: 1;
+}
+
+.breakdown-collapsible.collapsed {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Spacing between breakdown items */
+.breakdown-collapsible .breakdown-item + .breakdown-item {
+  margin-top: 0.5rem;
+}
+
+/* ========================================
+   SETTINGS LINK SHORTCUT PANEL
+   ======================================== */
+
+.settings-link-panel {
+  background: rgba(138, 180, 248, 0.03);
+  border-color: rgba(138, 180, 248, 0.15);
+  transition: var(--transition);
+}
+
+.settings-link-panel:hover {
+  border-color: rgba(138, 180, 248, 0.3);
+  background: rgba(138, 180, 248, 0.05);
+}
+
+/* ========================================
+   SELECTION PANEL — COMPACT MOBILE LAYOUT
+   ======================================== */
+
+@media (max-width: 480px) {
+  .selection-panel-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .selection-panel-content > div {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
