@@ -61,7 +61,7 @@ body {
 /* App container */
 .app-container {
   width: 100%;
-  max-width: 480px;
+  max-width: 90%;
   min-height: 100vh;
   padding: 1.5rem 1rem;
   display: flex;
@@ -1320,4 +1320,14 @@ header {
 
 .select-mode-active .viewer-card.selected:hover {
   background: rgba(253, 214, 99, 0.08);
+}
+
+/* Stats share image preview style */
+.share-image-preview {
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  margin-top: 0.5rem;
+  display: block;
 }

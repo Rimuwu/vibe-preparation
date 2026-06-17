@@ -3,6 +3,12 @@
  * Integrates parser, stats, algorithms, and updates the DOM.
  */
 
+console.log('Preparation.vibe: app.js loaded and executing...');
+window.addEventListener('error', (e) => {
+  console.error('Preparation.vibe Global Error Captured:', e.message, 'at', e.filename, ':', e.lineno);
+});
+
+
 import { parseMarkdown } from './parser.js';
 import { 
   getStats, 
@@ -44,6 +50,7 @@ const screenLists = document.getElementById('screen-lists');
 const btnShowStats = document.getElementById('btn-show-stats');
 const btnShowHome = document.getElementById('btn-show-home');
 const btnResetStats = document.getElementById('btn-reset-stats');
+const btnShareStats = document.getElementById('btn-share-stats');
 
 const modulesList = document.getElementById('modules-list');
 const inputModuleName = document.getElementById('input-module-name');
@@ -106,6 +113,7 @@ let isAllExpanded = true;
 
 const btnShowLists = document.getElementById('btn-show-lists');
 const listsContainer = document.getElementById('lists-container');
+const btnCreateListFromScreen = document.getElementById('btn-create-list-from-screen');
 const btnViewerSelectMode = document.getElementById('btn-viewer-select-mode');
 const viewerSelectionPanel = document.getElementById('viewer-selection-panel');
 const viewerSelectionCount = document.getElementById('viewer-selection-count');
@@ -671,10 +679,49 @@ function handleCustomModuleFile(file) {
  * ------------------------------------------------------------- */
 
 function setupEventListeners() {
-  // Navigation
-  btnShowLists.addEventListener('click', () => {
-    switchScreen('lists');
-  });
+  if (btnShowLists) {
+    btnShowLists.addEventListener('click', () => {
+      switchScreen('lists');
+    });
+  }
+
+  if (btnCreateListFromScreen) {
+    btnCreateListFromScreen.addEventListener('click', () => {
+      if (activeModule) {
+        switchScreen('viewer');
+        viewerTitle.textContent = `Просмотр темы: ${activeModule.name}`;
+        viewerDesc.textContent = activeModule.description || '';
+        viewerSearch.value = '';
+        viewerCategoryFilter.value = 'all';
+        viewerCorrectFilter.value = 'all';
+        viewerDifficultyFilter.value = 'all';
+        viewerSortBy.value = 'number_asc';
+        isAllExpanded = true;
+        btnViewerToggleAll.textContent = 'Свернуть все';
+        
+        // Trigger selection mode
+        isSelectionMode = true;
+        screenViewer.classList.add('select-mode-active');
+        if (btnViewerSelectMode) {
+          btnViewerSelectMode.classList.add('active');
+          const span = btnViewerSelectMode.querySelector('span');
+          if (span) span.textContent = 'Отменить выбор';
+          btnViewerSelectMode.style.borderColor = 'var(--error)';
+          btnViewerSelectMode.style.background = 'var(--error-dark)';
+          btnViewerSelectMode.style.color = 'var(--error)';
+        }
+        selectedQuestionIds.clear();
+        if (viewerSelectionCount) viewerSelectionCount.textContent = 'Выбрано вопросов: 0';
+        if (viewerSelectionPanel) viewerSelectionPanel.style.display = 'flex';
+        
+        renderViewerList();
+      } else {
+        showModalAlert('Пожалуйста, выберите тему для подготовки на главном экране, откройте просмотр темы и соберите набор вопросов.').then(() => {
+          switchScreen('modules');
+        });
+      }
+    });
+  }
 
   btnShowStats.addEventListener('click', () => {
     switchScreen('stats');
@@ -725,67 +772,74 @@ function setupEventListeners() {
     switchScreen('dashboard');
   });
 
-  btnViewerSelectMode.addEventListener('click', () => {
-    if (!activeModule) return;
-    isSelectionMode = !isSelectionMode;
-    if (isSelectionMode) {
-      screenViewer.classList.add('select-mode-active');
-      btnViewerSelectMode.classList.add('active');
-      btnViewerSelectMode.querySelector('span').textContent = 'Отменить выбор';
-      btnViewerSelectMode.style.borderColor = 'var(--error)';
-      btnViewerSelectMode.style.background = 'var(--error-dark)';
-      btnViewerSelectMode.style.color = 'var(--error)';
-      selectedQuestionIds.clear();
-      viewerSelectionCount.textContent = 'Выбрано вопросов: 0';
-      viewerSelectionPanel.style.display = 'flex';
-      renderViewerList();
-    } else {
+  if (btnViewerSelectMode) {
+    btnViewerSelectMode.addEventListener('click', () => {
+      if (!activeModule) return;
+      isSelectionMode = !isSelectionMode;
+      if (isSelectionMode) {
+        screenViewer.classList.add('select-mode-active');
+        btnViewerSelectMode.classList.add('active');
+        const span = btnViewerSelectMode.querySelector('span');
+        if (span) span.textContent = 'Отменить выбор';
+        btnViewerSelectMode.style.borderColor = 'var(--error)';
+        btnViewerSelectMode.style.background = 'var(--error-dark)';
+        btnViewerSelectMode.style.color = 'var(--error)';
+        selectedQuestionIds.clear();
+        if (viewerSelectionCount) viewerSelectionCount.textContent = 'Выбрано вопросов: 0';
+        if (viewerSelectionPanel) viewerSelectionPanel.style.display = 'flex';
+        renderViewerList();
+      } else {
+        deactivateSelectionMode();
+        renderViewerList();
+      }
+    });
+  }
+
+  if (btnViewerCancelSelection) {
+    btnViewerCancelSelection.addEventListener('click', () => {
       deactivateSelectionMode();
       renderViewerList();
-    }
-  });
+    });
+  }
 
-  btnViewerCancelSelection.addEventListener('click', () => {
-    deactivateSelectionMode();
-    renderViewerList();
-  });
-
-  btnViewerCreateList.addEventListener('click', async () => {
-    if (selectedQuestionIds.size === 0) {
-      showModalAlert('Пожалуйста, выберите хотя бы один вопрос.');
-      return;
-    }
-    
-    const defaultListName = `Набор: ${activeModule.name} (${selectedQuestionIds.size} вопр.)`;
-    const listName = await showModalPrompt('Введите название для нового списка вопросов:', defaultListName, 'Новый список');
-    if (listName === null) {
-      return;
-    }
-    
-    const name = listName.trim() || defaultListName;
-    try {
-      const raw = localStorage.getItem('vibe_prep_custom_lists');
-      const lists = raw ? JSON.parse(raw) : [];
+  if (btnViewerCreateList) {
+    btnViewerCreateList.addEventListener('click', async () => {
+      if (selectedQuestionIds.size === 0) {
+        showModalAlert('Пожалуйста, выберите хотя бы один вопрос.');
+        return;
+      }
       
-      const newList = {
-        id: 'list_' + Date.now(),
-        name: name,
-        moduleId: activeModule.id,
-        moduleName: activeModule.name,
-        questionIds: Array.from(selectedQuestionIds),
-        created: Date.now()
-      };
+      const defaultListName = `Набор: ${activeModule.name} (${selectedQuestionIds.size} вопр.)`;
+      const listName = await showModalPrompt('Введите название для нового списка вопросов:', defaultListName, 'Новый список');
+      if (listName === null) {
+        return;
+      }
       
-      lists.push(newList);
-      localStorage.setItem('vibe_prep_custom_lists', JSON.stringify(lists));
-      
-      deactivateSelectionMode();
-      showModalAlert(`Набор вопросов "${name}" успешно создан!`);
-      switchScreen('lists');
-    } catch (e) {
-      showModalAlert('Не удалось сохранить список: ' + e.message);
-    }
-  });
+      const name = listName.trim() || defaultListName;
+      try {
+        const raw = localStorage.getItem('vibe_prep_custom_lists');
+        const lists = raw ? JSON.parse(raw) : [];
+        
+        const newList = {
+          id: 'list_' + Date.now(),
+          name: name,
+          moduleId: activeModule.id,
+          moduleName: activeModule.name,
+          questionIds: Array.from(selectedQuestionIds),
+          created: Date.now()
+        };
+        
+        lists.push(newList);
+        localStorage.setItem('vibe_prep_custom_lists', JSON.stringify(lists));
+        
+        deactivateSelectionMode();
+        showModalAlert(`Набор вопросов "${name}" успешно создан!`);
+        switchScreen('lists');
+      } catch (e) {
+        showModalAlert('Не удалось сохранить список: ' + e.message);
+      }
+    });
+  }
 
   viewerSearch.addEventListener('input', renderViewerList);
   viewerCategoryFilter.addEventListener('change', renderViewerList);
@@ -971,36 +1025,54 @@ function setupEventListeners() {
     }
   });
 
+  // Share Progress Image
+  btnShareStats.addEventListener('click', generateStatsShareCard);
+
   // Keyboard Shortcuts (PC)
   document.addEventListener('keydown', handleKeyboardShortcuts);
 }
 
 
 function switchScreen(screenName) {
-  screenModules.classList.remove('active');
-  screenDashboard.classList.remove('active');
-  screenStudy.classList.remove('active');
-  screenStats.classList.remove('active');
-  screenViewer.classList.remove('active');
+  console.log(`[Preparation.vibe] switchScreen: switching to "${screenName}"`);
   
-  btnShowHome.style.display = 'none';
-  btnShowStats.style.display = 'none';
+  if (screenModules) screenModules.classList.remove('active');
+  if (screenDashboard) screenDashboard.classList.remove('active');
+  if (screenStudy) screenStudy.classList.remove('active');
+  if (screenStats) screenStats.classList.remove('active');
+  if (screenViewer) screenViewer.classList.remove('active');
+  if (screenLists) screenLists.classList.remove('active');
+  
+  if (btnShowHome) btnShowHome.style.display = 'none';
+  if (btnShowStats) btnShowStats.style.display = 'none';
 
   if (screenName === 'modules') {
-    screenModules.classList.add('active');
+    if (screenModules) screenModules.classList.add('active');
+    console.log('[Preparation.vibe] screenModules activated');
   } else if (screenName === 'dashboard') {
-    screenDashboard.classList.add('active');
-    btnShowStats.style.display = 'flex';
+    if (screenDashboard) screenDashboard.classList.add('active');
+    if (btnShowStats) btnShowStats.style.display = 'flex';
+    console.log('[Preparation.vibe] screenDashboard activated');
   } else if (screenName === 'study') {
-    screenStudy.classList.add('active');
-    btnShowHome.style.display = 'flex';
+    if (screenStudy) screenStudy.classList.add('active');
+    if (btnShowHome) btnShowHome.style.display = 'flex';
+    console.log('[Preparation.vibe] screenStudy activated');
   } else if (screenName === 'stats') {
-    screenStats.classList.add('active');
-    btnShowHome.style.display = 'flex';
+    if (screenStats) screenStats.classList.add('active');
+    if (btnShowHome) btnShowHome.style.display = 'flex';
     updateGlobalStatsUI();
+    console.log('[Preparation.vibe] screenStats activated');
   } else if (screenName === 'viewer') {
-    screenViewer.classList.add('active');
-    btnShowHome.style.display = 'flex';
+    if (screenViewer) screenViewer.classList.add('active');
+    if (btnShowHome) btnShowHome.style.display = 'flex';
+    console.log('[Preparation.vibe] screenViewer activated');
+  } else if (screenName === 'lists') {
+    if (screenLists) screenLists.classList.add('active');
+    if (btnShowHome) btnShowHome.style.display = 'flex';
+    console.log('[Preparation.vibe] screenLists activated. Rendering lists...');
+    renderListsScreen();
+  } else {
+    console.warn(`[Preparation.vibe] Unknown screen: "${screenName}"`);
   }
 }
 
@@ -2085,18 +2157,27 @@ function showModalPrompt(message, defaultValue = '', title = 'Ввод') {
 }
 
 function renderListsScreen() {
-  listsContainer.innerHTML = '';
+  const container = listsContainer || document.getElementById('lists-container');
+  if (!container) {
+    console.error('listsContainer element not found');
+    return;
+  }
+  container.innerHTML = '';
   
   let lists = [];
   try {
     const raw = localStorage.getItem('vibe_prep_custom_lists');
+    console.log('raw custom lists data from localStorage:', raw);
     lists = raw ? JSON.parse(raw) : [];
   } catch (e) {
     console.error('Failed to load custom lists', e);
   }
   
-  if (lists.length === 0) {
-    listsContainer.innerHTML = `
+  console.log('Parsed custom lists count:', Array.isArray(lists) ? lists.length : 'not an array');
+
+  
+  if (!Array.isArray(lists) || lists.length === 0) {
+    container.innerHTML = `
       <div style="text-align:center; padding:2rem 1.5rem; color:var(--text-muted); font-size:0.95rem;">
         У вас пока нет созданных наборов вопросов.<br>
         Вы можете собрать их на странице просмотра вопросов темы.
@@ -2106,70 +2187,77 @@ function renderListsScreen() {
   }
   
   lists.forEach(list => {
-    const card = document.createElement('div');
-    card.className = 'list-card';
-    card.dataset.id = list.id;
-    
-    const header = document.createElement('div');
-    header.className = 'list-card-header';
-    
-    const titleGroup = document.createElement('div');
-    titleGroup.className = 'list-card-title-group';
-    
-    const title = document.createElement('h3');
-    title.className = 'list-card-title';
-    title.textContent = list.name;
-    
-    const subtitle = document.createElement('span');
-    subtitle.className = 'list-card-subtitle';
-    subtitle.textContent = `Тема: ${list.moduleName} • Вопросов: ${list.questionIds.length}`;
-    
-    titleGroup.appendChild(title);
-    titleGroup.appendChild(subtitle);
-    
-    const delBtn = document.createElement('button');
-    delBtn.className = 'btn-module-delete';
-    delBtn.title = 'Удалить набор';
-    delBtn.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="3 6 5 6 21 6"></polyline>
-        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-      </svg>
-    `;
-    delBtn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      if (await showModalConfirm(`Вы уверены, что хотите удалить набор "${list.name}"?`)) {
-        deleteCustomList(list.id);
-      }
-    });
-    
-    header.appendChild(titleGroup);
-    header.appendChild(delBtn);
-    
-    const actions = document.createElement('div');
-    actions.className = 'list-card-actions';
-    
-    const solveBtn = document.createElement('button');
-    solveBtn.className = 'btn-primary';
-    solveBtn.style.padding = '0.5rem 1.25rem';
-    solveBtn.style.fontSize = '0.85rem';
-    solveBtn.style.width = 'auto';
-    solveBtn.innerHTML = `
-      Решать
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polygon points="5 3 19 12 5 21 5 3"></polygon>
-      </svg>
-    `;
-    solveBtn.addEventListener('click', () => {
-      startCustomListSession(list);
-    });
-    
-    actions.appendChild(solveBtn);
-    
-    card.appendChild(header);
-    card.appendChild(actions);
-    
-    listsContainer.appendChild(card);
+    try {
+      if (!list || typeof list !== 'object') return;
+
+      const card = document.createElement('div');
+      card.className = 'list-card';
+      card.dataset.id = list.id || '';
+      
+      const header = document.createElement('div');
+      header.className = 'list-card-header';
+      
+      const titleGroup = document.createElement('div');
+      titleGroup.className = 'list-card-title-group';
+      
+      const title = document.createElement('h3');
+      title.className = 'list-card-title';
+      title.textContent = list.name || 'Без названия';
+      
+      const subtitle = document.createElement('span');
+      subtitle.className = 'list-card-subtitle';
+      const count = (list.questionIds || []).length;
+      subtitle.textContent = `Тема: ${list.moduleName || 'Неизвестно'} • Вопросов: ${count}`;
+      
+      titleGroup.appendChild(title);
+      titleGroup.appendChild(subtitle);
+      
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-module-delete';
+      delBtn.title = 'Удалить набор';
+      delBtn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      `;
+      delBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (await showModalConfirm(`Вы уверены, что хотите удалить набор "${list.name || 'Без названия'}"?`)) {
+          deleteCustomList(list.id);
+        }
+      });
+      
+      header.appendChild(titleGroup);
+      header.appendChild(delBtn);
+      
+      const actions = document.createElement('div');
+      actions.className = 'list-card-actions';
+      
+      const solveBtn = document.createElement('button');
+      solveBtn.className = 'btn-primary';
+      solveBtn.style.padding = '0.5rem 1.25rem';
+      solveBtn.style.fontSize = '0.85rem';
+      solveBtn.style.width = 'auto';
+      solveBtn.innerHTML = `
+        Решать
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+      `;
+      solveBtn.addEventListener('click', () => {
+        startCustomListSession(list);
+      });
+      
+      actions.appendChild(solveBtn);
+      
+      card.appendChild(header);
+      card.appendChild(actions);
+      
+      container.appendChild(card);
+    } catch (err) {
+      console.error('Error rendering individual list card:', err, list);
+    }
   });
 }
 
@@ -2177,8 +2265,10 @@ function deleteCustomList(listId) {
   try {
     const raw = localStorage.getItem('vibe_prep_custom_lists');
     let lists = raw ? JSON.parse(raw) : [];
-    lists = lists.filter(l => l.id !== listId);
-    localStorage.setItem('vibe_prep_custom_lists', JSON.stringify(lists));
+    if (Array.isArray(lists)) {
+      lists = lists.filter(l => l && l.id !== listId);
+      localStorage.setItem('vibe_prep_custom_lists', JSON.stringify(lists));
+    }
     renderListsScreen();
   } catch (e) {
     console.error('Failed to delete custom list', e);
@@ -2186,6 +2276,10 @@ function deleteCustomList(listId) {
 }
 
 async function startCustomListSession(list) {
+  if (!list || !list.moduleId) {
+    showModalAlert('Неверные данные набора вопросов.');
+    return;
+  }
   const mod = allModules.find(m => m.id === list.moduleId);
   if (!mod) {
     showModalAlert('Тема, к которой относится этот набор, больше не существует.');
@@ -2199,7 +2293,8 @@ async function startCustomListSession(list) {
     localStorage.setItem('vibe_prep_active_module_id', mod.id);
     populateCategories();
     
-    const filteredQuestions = dbQuestions.filter(q => list.questionIds.includes(q.id));
+    const questionIds = list.questionIds || [];
+    const filteredQuestions = dbQuestions.filter(q => questionIds.includes(q.id));
     if (filteredQuestions.length === 0) {
       showModalAlert('В этом наборе не найдено подходящих вопросов. Возможно, они были удалены из темы.');
       return;
@@ -2223,3 +2318,284 @@ async function startCustomListSession(list) {
     showModalAlert('Не удалось загрузить вопросы: ' + e.message);
   }
 }
+
+function generateStatsShareCard() {
+  if (!activeModule) {
+    showModalAlert('Сначала выберите тему для подготовки.');
+    return;
+  }
+  
+  const global = getGlobalStats(dbQuestions);
+  
+  const canvas = document.createElement('canvas');
+  canvas.width = 1200;
+  canvas.height = 900;
+  const ctx = canvas.getContext('2d');
+  
+  const grad = ctx.createLinearGradient(0, 0, 1200, 900);
+  grad.addColorStop(0, '#121212');
+  grad.addColorStop(1, '#1e1f20');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 1200, 900);
+  
+  ctx.strokeStyle = 'rgba(138, 180, 248, 0.03)';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 1200; i += 60) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i, 900);
+    ctx.stroke();
+  }
+  for (let j = 0; j < 900; j += 60) {
+    ctx.beginPath();
+    ctx.moveTo(0, j);
+    ctx.lineTo(1200, j);
+    ctx.stroke();
+  }
+  
+  const glow1 = ctx.createRadialGradient(200, 200, 0, 200, 200, 300);
+  glow1.addColorStop(0, 'rgba(138, 180, 248, 0.08)');
+  glow1.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glow1;
+  ctx.fillRect(0, 0, 1200, 900);
+  
+  const glow2 = ctx.createRadialGradient(1000, 700, 0, 1000, 700, 300);
+  glow2.addColorStop(0, 'rgba(129, 201, 149, 0.06)');
+  glow2.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glow2;
+  ctx.fillRect(0, 0, 1200, 900);
+
+  ctx.strokeStyle = '#3c4043';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(30, 30, 1140, 840);
+  
+  ctx.fillStyle = '#8ab4f8';
+  ctx.fillRect(30, 30, 12, 840);
+  
+  ctx.font = 'bold 36px Roboto, sans-serif';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('Preparation.vibe', 80, 100);
+  
+  ctx.font = 'bold 20px Roboto, sans-serif';
+  ctx.fillStyle = '#8ab4f8';
+  ctx.strokeStyle = 'rgba(138, 180, 248, 0.3)';
+  ctx.lineWidth = 2;
+  const badgeX = 270;
+  const badgeY = 72;
+  const badgeW = 70;
+  const badgeH = 36;
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 6);
+  } else {
+    ctx.rect(badgeX, badgeY, badgeW, badgeH);
+  }
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(138, 180, 248, 0.1)';
+  ctx.fill();
+  ctx.fillStyle = '#8ab4f8';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('AS1', badgeX + badgeW/2, badgeY + badgeH/2);
+  
+  ctx.textAlign = 'right';
+  ctx.font = '30px Roboto, sans-serif';
+  ctx.fillStyle = '#9e9e9e';
+  const dateStr = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+  ctx.fillText(dateStr, 1130, 96);
+  
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#9e9e9e';
+  ctx.font = '30px Roboto, sans-serif';
+  ctx.fillText('ТЕМА ПОДГОТОВКИ', 80, 200);
+  
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 52px Roboto, sans-serif';
+  const moduleTitle = activeModule.name;
+  wrapText(ctx, moduleTitle, 80, 265, 1040, 64);
+  
+  ctx.strokeStyle = 'rgba(60, 64, 67, 0.8)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(80, 370);
+  ctx.lineTo(1120, 370);
+  ctx.stroke();
+  
+  const completionPct = global.totalQuestions > 0 ? Math.round((global.answeredCount / global.totalQuestions) * 100) : 0;
+  const ringX = 300;
+  const ringY = 620;
+  const radius = 150;
+  
+  ctx.strokeStyle = '#2d2e30';
+  ctx.lineWidth = 26;
+  ctx.beginPath();
+  ctx.arc(ringX, ringY, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  
+  ctx.strokeStyle = '#81c995';
+  ctx.lineWidth = 26;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  const startAngle = -Math.PI / 2;
+  const endAngle = startAngle + (Math.PI * 2 * (completionPct / 100));
+  ctx.arc(ringX, ringY, radius, startAngle, endAngle);
+  ctx.stroke();
+  
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 78px Roboto, sans-serif';
+  ctx.fillText(`${completionPct}%`, ringX, ringY - 15);
+  
+  ctx.font = '28px Roboto, sans-serif';
+  ctx.fillStyle = '#9e9e9e';
+  ctx.fillText('Изучено', ringX, ringY + 45);
+  
+  const startX = 600;
+  const startY = 460;
+  const rowHeight = 100;
+  
+  const items = [
+    { label: 'Точность ответов', value: `${global.accuracy}%`, color: '#8ab4f8' },
+    { label: 'Вопросов изучено', value: `${global.answeredCount} из ${global.totalQuestions}`, color: '#ffffff' },
+    { label: 'Сложные вопросы', value: `${global.totalDifficult}`, color: '#fdd663' },
+    { label: 'Всего попыток', value: `${global.totalCorrect + global.totalIncorrect}`, color: '#ffffff' }
+  ];
+  
+  ctx.textAlign = 'left';
+  items.forEach((item, idx) => {
+    const y = startY + (idx * rowHeight);
+    
+    ctx.fillStyle = item.color;
+    ctx.beginPath();
+    ctx.arc(startX, y - 12, 10, 0, Math.PI * 2);
+    ctx.fill();
+    
+    ctx.font = '30px Roboto, sans-serif';
+    ctx.fillStyle = '#9e9e9e';
+    ctx.fillText(item.label, startX + 30, y);
+    
+    ctx.font = 'bold 36px Roboto, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(item.value, startX + 370, y);
+  });
+
+  ctx.textAlign = 'center';
+  ctx.font = '26px Roboto, sans-serif';
+  ctx.fillStyle = '#5f6368';
+  ctx.fillText('Подготовлено на платформе rimuwu.github.io/vibe-preparation/', 600, 840);
+
+  const imgUrl = canvas.toDataURL('image/png');
+  showModalShareCard(imgUrl, canvas);
+}
+
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(' ');
+  let line = '';
+  let currentY = y;
+  
+  for (let n = 0; n < words.length; n++) {
+    const testLine = line + words[n] + ' ';
+    const metrics = ctx.measureText(testLine);
+    const testWidth = metrics.width;
+    
+    if (testWidth > maxWidth && n > 0) {
+      ctx.fillText(line, x, currentY);
+      line = words[n] + ' ';
+      currentY += lineHeight;
+    } else {
+      line = testLine;
+    }
+  }
+  ctx.fillText(line, x, currentY);
+}
+
+function showModalShareCard(imgUrl, canvasElement) {
+  modalTitle.textContent = 'Карточка прогресса';
+  modalBody.innerHTML = `
+    <p style="margin-bottom:0.75rem; font-size:0.9rem; color:var(--text-muted);">
+      Вот ваша карточка прогресса. Вы можете сохранить её или скопировать в буфер обмена!
+    </p>
+    <img src="${imgUrl}" class="share-image-preview" alt="Preparation.vibe Progress">
+  `;
+  modalBtnCancel.style.display = 'block';
+  modalBtnCancel.textContent = 'Закрыть';
+  modalBtnOk.style.display = 'block';
+  modalBtnOk.textContent = 'Скачать';
+
+  // Create and insert a Copy button in the footer dynamically
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'btn-action';
+  copyBtn.style.borderRadius = 'var(--radius-sm)';
+  copyBtn.style.border = '1px solid var(--primary)';
+  copyBtn.style.background = 'var(--primary-dark)';
+  copyBtn.style.color = 'var(--primary)';
+  copyBtn.style.fontSize = '0.9rem';
+  copyBtn.style.padding = '0.6rem 1.25rem';
+  copyBtn.textContent = 'Копировать';
+
+  const footer = document.getElementById('modal-footer');
+  footer.insertBefore(copyBtn, modalBtnOk);
+
+  customModal.style.display = 'flex';
+  customModal.classList.add('active');
+
+  const cleanUp = () => {
+    customModal.style.display = 'none';
+    customModal.classList.remove('active');
+    modalBtnOk.removeEventListener('click', onDownload);
+    modalBtnCancel.removeEventListener('click', onClose);
+    modalClose.removeEventListener('click', onClose);
+    copyBtn.remove();
+  };
+
+  function onDownload() {
+    const a = document.createElement('a');
+    a.href = imgUrl;
+    const safeName = activeModule ? activeModule.name.replace(/[^a-z0-9а-яё_-]/gi, '_') : 'stats';
+    a.download = `vibe-prep-progress-${safeName}.png`;
+    a.click();
+    cleanUp();
+  }
+
+  function onCopy() {
+    canvasElement.toBlob((blob) => {
+      if (!blob) {
+        showModalAlert('Не удалось создать изображение для копирования.');
+        return;
+      }
+      navigator.clipboard.write([
+        new ClipboardItem({
+          'image/png': blob
+        })
+      ]).then(() => {
+        copyBtn.textContent = 'Скопировано! ✓';
+        copyBtn.style.color = 'var(--success)';
+        copyBtn.style.borderColor = 'var(--success)';
+        copyBtn.style.background = 'var(--success-dark)';
+        setTimeout(() => {
+          if (document.body.contains(copyBtn)) {
+            copyBtn.textContent = 'Копировать';
+            copyBtn.style.color = 'var(--primary)';
+            copyBtn.style.borderColor = 'var(--primary)';
+            copyBtn.style.background = 'var(--primary-dark)';
+          }
+        }, 2000);
+      }).catch(err => {
+        console.error(err);
+        showModalAlert('Не удалось скопировать в буфер. Проверьте разрешения браузера.');
+      });
+    }, 'image/png');
+  }
+
+  function onClose() {
+    cleanUp();
+  }
+
+  copyBtn.addEventListener('click', onCopy);
+  modalBtnOk.addEventListener('click', onDownload);
+  modalBtnCancel.addEventListener('click', onClose);
+  modalClose.addEventListener('click', onClose);
+}
+
