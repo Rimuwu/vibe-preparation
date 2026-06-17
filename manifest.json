@@ -2,7 +2,7 @@
   "name": "Preparation.vibe",
   "short_name": "Prep.vibe",
   "description": "Интерактивная платформа для подготовки к экзаменам — карточки, статистика, соревнования",
-  "start_url": "/",
+  "start_url": "/vibe-preparation/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#121218",
@@ -21,7 +21,10 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["education", "productivity"],
+  "categories": [
+    "education",
+    "productivity"
+  ],
   "lang": "ru",
   "scope": "/"
 }
