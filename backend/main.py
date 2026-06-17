@@ -66,8 +66,8 @@ class LeaderboardPayload(BaseModel):
 def generate_sync_code() -> str:
     # Generates a code format like VIBE-ABCD-1234
     chars = string.ascii_uppercase + string.digits
-    part1 = "".join(random.choices(chars, k=4))
-    part2 = "".join(random.choices(chars, k=4))
+    part1 = "".join(random.choices(chars, k=16))
+    part2 = "".join(random.choices(chars, k=16))
     return f"VIBE-{part1}-{part2}"
 
 @app.get("/api/health")
