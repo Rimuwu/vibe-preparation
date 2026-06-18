@@ -52,6 +52,7 @@ let activeModule = null;      // Selected module metadata
 let allModules = [];          // Combined list of standard and custom modules
 let viewerActiveTag = null;
 let statsActiveTag = null;
+let currentChoiceOptions = []; // Shuffled options for the current question in test mode
 
 
 // DOM Elements
@@ -463,6 +464,9 @@ async function initApp() {
   // 1. Load modules manifest and custom modules
   await loadModules();
 
+  // Initialize the new radio card selectors
+  initCardRadioSelectors();
+
   // 1.5. Check database and sync progress silently if a sync code exists
   await checkDbHealth();
   await syncProgressWithCloud();
@@ -500,6 +504,8 @@ async function initApp() {
           }
 
           populateCategories();
+          syncCardSelectorsFromSelects();
+          updateSettingsMetrics();
 
           // Update details in dashboard in case they go back
           currentModuleTitle.textContent = activeModule.name;
@@ -638,6 +644,8 @@ async function selectModule(mod) {
 
     // Populate category dropdown
     populateCategories();
+    syncCardSelectorsFromSelects();
+    updateSettingsMetrics();
 
     switchScreen('dashboard');
   } catch (err) {
@@ -657,6 +665,50 @@ function populateCategories() {
     opt.textContent = cat;
     selectCategory.appendChild(opt);
   });
+
+  // Card radio category container
+  const catContainer = document.getElementById('card-selector-category');
+  if (catContainer) {
+    catContainer.innerHTML = '';
+    
+    // Add "Все вопросы" card
+    const allCard = document.createElement('div');
+    allCard.className = `radio-card ${selectCategory.value === 'all' ? 'active' : ''}`;
+    allCard.dataset.value = 'all';
+    allCard.innerHTML = `
+      <div class="radio-card-icon">📂</div>
+      <div class="radio-card-content">
+        <div class="radio-card-title">Все вопросы</div>
+        <div class="radio-card-desc">Все категории вместе</div>
+      </div>
+    `;
+    catContainer.appendChild(allCard);
+    
+    categories.forEach(cat => {
+      const card = document.createElement('div');
+      card.className = `radio-card ${selectCategory.value === cat ? 'active' : ''}`;
+      card.dataset.value = cat;
+      card.innerHTML = `
+        <div class="radio-card-icon">📁</div>
+        <div class="radio-card-content">
+          <div class="radio-card-title">${cat}</div>
+          <div class="radio-card-desc">Категория вопросов</div>
+        </div>
+      `;
+      catContainer.appendChild(card);
+    });
+    
+    const cards = catContainer.querySelectorAll('.radio-card');
+    cards.forEach(c => {
+      c.addEventListener('click', () => {
+        cards.forEach(cardNode => cardNode.classList.remove('active'));
+        c.classList.add('active');
+        selectCategory.value = c.dataset.value;
+        saveActiveSession();
+        updateSettingsMetrics();
+      });
+    });
+  }
 
   // Viewer category select
   if (viewerCategoryFilter) {
@@ -1752,9 +1804,36 @@ function setupQtypeUI(q, qType) {
 }
 
 function flipCard() {
+  const qType = selectQType.value;
+  const q = sessionQueue[currentIndex];
+
   isCardFlipped = !isCardFlipped;
   if (isCardFlipped) {
     studyCard.classList.add('flipped');
+
+    // Test (choice) mode: automatic scoring on manual flip
+    if (qType === 'choice' && q && sessionAnswers[currentIndex] === null) {
+      // Mark as incorrect
+      recordAnswer(q.id, false);
+      sessionAnswers[currentIndex] = false;
+      sessionAttempts++;
+      saveActiveSession();
+      updateProgressUI();
+
+      // Disable all choice buttons and color correct one green
+      const allBtns = choiceContainer.querySelectorAll('.option-btn');
+      allBtns.forEach(b => {
+        b.disabled = true;
+        const matchingOpt = currentChoiceOptions.find(o => o.text === b.textContent);
+        if (matchingOpt && matchingOpt.isCorrect) {
+          b.classList.add('correct');
+        }
+      });
+
+      // Show Далее button
+      const btnNextQuestion = document.getElementById('btn-next-question');
+      if (btnNextQuestion) btnNextQuestion.style.display = 'flex';
+    }
   } else {
     studyCard.classList.remove('flipped');
   }
@@ -1831,19 +1910,19 @@ function generateMultipleChoiceOptions(q) {
     const correctChoices = q.choices.filter(c => c.isCorrect);
     const incorrectChoices = q.choices.filter(c => !c.isCorrect);
 
-    // Display up to 4 options including all correct ones
-    const targetSize = 4;
-    const selectedCorrect = [...correctChoices];
-
-    // Randomly select incorrect options to fill the rest of the options
-    const neededIncorrect = Math.max(0, targetSize - selectedCorrect.length);
+    // Strictly display exactly 4 options: 1 correct and 3 distractors
+    const correct = correctChoices.length > 0 ? correctChoices[0] : null;
+    const neededIncorrect = correct ? 3 : 4;
     const shuffledIncorrect = shuffleArray(incorrectChoices);
     const selectedIncorrect = shuffledIncorrect.slice(0, neededIncorrect);
 
-    options = [...selectedCorrect, ...selectedIncorrect].map(c => ({
-      text: c.text,
-      isCorrect: c.isCorrect
-    }));
+    options = [];
+    if (correct) {
+      options.push({ text: correct.text, isCorrect: true });
+    }
+    selectedIncorrect.forEach(c => {
+      options.push({ text: c.text, isCorrect: false });
+    });
   } else {
     // Generate distractors using other question answers
     const correctAnswerText = stripMarkdown(q.shortAnswer || q.title);
@@ -1871,6 +1950,9 @@ function generateMultipleChoiceOptions(q) {
 
   // Shuffle option items so correct answer isn't always first
   options = shuffleArray(options);
+  
+  // Save to global state for manual flip access
+  currentChoiceOptions = options;
 
   // Render choice buttons
   options.forEach(opt => {
@@ -2554,6 +2636,8 @@ function renderStatsTable() {
       selectCategory.value = 'all';
       selectAlgorithm.value = 'sequential';
       chkOnlyDifficult.checked = false;
+      syncCardSelectorsFromSelects();
+      updateSettingsMetrics();
 
       switchScreen('study');
       loadCard(currentIndex);
@@ -3194,6 +3278,8 @@ async function startCustomListSession(list) {
     selectAlgorithm.value = 'sequential';
     if (selectProgressFilter) selectProgressFilter.value = 'all';
     chkOnlyDifficult.checked = false;
+    syncCardSelectorsFromSelects();
+    updateSettingsMetrics();
 
     switchScreen('study');
     loadCard(currentIndex);
@@ -3883,5 +3969,125 @@ function updateSyncBadgeUI(isSynced, syncCode = '', isOffline = false) {
 
     if (syncSetupActions) syncSetupActions.style.display = 'flex';
     if (syncConnectedActions) syncConnectedActions.style.display = 'none';
+  }
+}
+
+/* -------------------------------------------------------------
+ * PREMIUM CARD RADIO SELECTOR IMPLEMENTATION
+ * ------------------------------------------------------------- */
+function initCardRadioSelectors() {
+  const selectors = [
+    { containerId: 'card-selector-algorithm', selectEl: selectAlgorithm },
+    { containerId: 'card-selector-qtype', selectEl: selectQType },
+    { containerId: 'card-selector-progress-filter', selectEl: selectProgressFilter }
+  ];
+
+  selectors.forEach(sel => {
+    const container = document.getElementById(sel.containerId);
+    if (container) {
+      const cards = container.querySelectorAll('.radio-card');
+      cards.forEach(c => {
+        c.addEventListener('click', () => {
+          cards.forEach(cardNode => cardNode.classList.remove('active'));
+          c.classList.add('active');
+          sel.selectEl.value = c.dataset.value;
+          saveActiveSession();
+          
+          if (sel.selectEl === selectQType) {
+            updateSettingsMetrics();
+          }
+        });
+      });
+    }
+  });
+
+  const btnToggleOnlyDifficult = document.getElementById('btn-toggle-only-difficult');
+  if (btnToggleOnlyDifficult) {
+    btnToggleOnlyDifficult.addEventListener('click', () => {
+      chkOnlyDifficult.checked = !chkOnlyDifficult.checked;
+      syncCardSelectorsFromSelects();
+      saveActiveSession();
+    });
+  }
+
+  syncCardSelectorsFromSelects();
+  updateSettingsMetrics();
+}
+
+function syncCardSelectorsFromSelects() {
+  // Sync Category
+  const catContainer = document.getElementById('card-selector-category');
+  if (catContainer) {
+    const cards = catContainer.querySelectorAll('.radio-card');
+    cards.forEach(c => {
+      if (c.dataset.value === selectCategory.value) {
+        c.classList.add('active');
+      } else {
+        c.classList.remove('active');
+      }
+    });
+  }
+
+  // Sync others
+  const selectors = [
+    { containerId: 'card-selector-algorithm', selectEl: selectAlgorithm },
+    { containerId: 'card-selector-qtype', selectEl: selectQType },
+    { containerId: 'card-selector-progress-filter', selectEl: selectProgressFilter }
+  ];
+
+  selectors.forEach(sel => {
+    const container = document.getElementById(sel.containerId);
+    if (container) {
+      const cards = container.querySelectorAll('.radio-card');
+      cards.forEach(c => {
+        if (c.dataset.value === sel.selectEl.value) {
+          c.classList.add('active');
+        } else {
+          c.classList.remove('active');
+        }
+      });
+    }
+  });
+
+  // Sync Only Difficult
+  const btnToggleOnlyDifficult = document.getElementById('btn-toggle-only-difficult');
+  if (btnToggleOnlyDifficult) {
+    if (chkOnlyDifficult.checked) {
+      btnToggleOnlyDifficult.classList.add('active');
+      btnToggleOnlyDifficult.textContent = 'Только сложные';
+    } else {
+      btnToggleOnlyDifficult.classList.remove('active');
+      btnToggleOnlyDifficult.textContent = 'Не только сложные';
+    }
+  }
+}
+
+function updateSettingsMetrics() {
+  if (!dbQuestions || dbQuestions.length === 0) return;
+
+  const currentCategory = selectCategory.value;
+  let filteredQuestions = dbQuestions;
+  if (currentCategory !== 'all') {
+    filteredQuestions = dbQuestions.filter(q => q.category === currentCategory);
+  }
+
+  // 1. Average choices count
+  const choiceQs = filteredQuestions.filter(q => q.choices && q.choices.length > 0);
+  const avgChoices = choiceQs.length > 0
+    ? (choiceQs.reduce((sum, q) => sum + q.choices.length, 0) / choiceQs.length).toFixed(1)
+    : 0;
+
+  const choiceInfoEl = document.getElementById('qtype-choice-info');
+  if (choiceInfoEl) {
+    choiceInfoEl.textContent = `Выбор из 4 вариантов (в среднем ${avgChoices} в базе)`;
+  }
+
+  // 2. Reference answers count
+  const withShortAnswer = filteredQuestions.filter(q => q.shortAnswer && q.shortAnswer.trim() !== '');
+  const totalCount = filteredQuestions.length;
+
+  const inputInfoEl = document.getElementById('qtype-input-info');
+  if (inputInfoEl) {
+    inputInfoEl.textContent = `Эталон у ${withShortAnswer.length} из ${totalCount} заданий`;
   }
 }

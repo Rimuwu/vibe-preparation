@@ -238,46 +238,123 @@
         <h2 style="font-size: 1.25rem; margin-bottom: 1rem; font-weight: 700;">Настройки обучения</h2>
 
         <div class="form-group">
-          <label for="select-category">Раздел / Категория</label>
-          <select id="select-category" class="select-control">
+          <label>Раздел / Категория</label>
+          <select id="select-category" class="select-control" style="display: none;">
             <option value="all">Все вопросы</option>
           </select>
+          <div id="card-selector-category" class="card-radio-group">
+            <!-- Dynamic categories populated via JS -->
+          </div>
         </div>
 
         <div class="form-group">
-          <label for="select-algorithm">Алгоритм обучения</label>
-          <select id="select-algorithm" class="select-control">
+          <label>Алгоритм обучения</label>
+          <select id="select-algorithm" class="select-control" style="display: none;">
             <option value="sequential">Все подряд (Повторение)</option>
             <option value="random">Случайные</option>
             <option value="difficult_first">От сложных к легким (На основе отметок)</option>
           </select>
+          <div id="card-selector-algorithm" class="card-radio-group">
+            <div class="radio-card active" data-value="sequential">
+              <div class="radio-card-icon">🔄</div>
+              <div class="radio-card-content">
+                <div class="radio-card-title">Все подряд</div>
+                <div class="radio-card-desc">Вопросы по порядку</div>
+              </div>
+            </div>
+            <div class="radio-card" data-value="random">
+              <div class="radio-card-icon">🔀</div>
+              <div class="radio-card-content">
+                <div class="radio-card-title">Случайные</div>
+                <div class="radio-card-desc">Вопросы вразнобой</div>
+              </div>
+            </div>
+            <div class="radio-card" data-value="difficult_first">
+              <div class="radio-card-icon">🔥</div>
+              <div class="radio-card-content">
+                <div class="radio-card-title">Сложные сначала</div>
+                <div class="radio-card-desc">От трудных к легким</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="form-group">
-          <label for="select-qtype">Вид вопросов</label>
-          <select id="select-qtype" class="select-control">
+          <label>Вид вопросов</label>
+          <select id="select-qtype" class="select-control" style="display: none;">
             <option value="free">Свободный (Устное решение)</option>
             <option value="choice">Тест (Выбор варианта)</option>
             <option value="input">Ввод текста</option>
           </select>
+          <div id="card-selector-qtype" class="card-radio-group">
+            <div class="radio-card active" data-value="free">
+              <div class="radio-card-icon">🗣️</div>
+              <div class="radio-card-content">
+                <div class="radio-card-title">Свободный ответ</div>
+                <div class="radio-card-desc">Устный самоконтроль</div>
+              </div>
+            </div>
+            <div class="radio-card" data-value="choice">
+              <div class="radio-card-icon">📝</div>
+              <div class="radio-card-content">
+                <div class="radio-card-title">Тест</div>
+                <div class="radio-card-desc" id="qtype-choice-info">Выбор из 4 вариантов</div>
+              </div>
+            </div>
+            <div class="radio-card" data-value="input">
+              <div class="radio-card-icon">⌨️</div>
+              <div class="radio-card-content">
+                <div class="radio-card-title">Ввод текста</div>
+                <div class="radio-card-desc" id="qtype-input-info">Проверка ввода</div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="form-group">
-          <label for="select-progress-filter">Фильтр по прогрессу</label>
-          <select id="select-progress-filter" class="select-control">
+          <label>Фильтр по прогрессу</label>
+          <select id="select-progress-filter" class="select-control" style="display: none;">
             <option value="all">Все вопросы</option>
             <option value="no_correct">Без правильных ответов</option>
             <option value="no_attempts">Вообще без ответов (новые)</option>
           </select>
+          <div id="card-selector-progress-filter" class="card-radio-group">
+            <div class="radio-card active" data-value="all">
+              <div class="radio-card-icon">📋</div>
+              <div class="radio-card-content">
+                <div class="radio-card-title">Все вопросы</div>
+                <div class="radio-card-desc">Без фильтрации</div>
+              </div>
+            </div>
+            <div class="radio-card" data-value="no_correct">
+              <div class="radio-card-icon">❌</div>
+              <div class="radio-card-content">
+                <div class="radio-card-title">Без верных</div>
+                <div class="radio-card-desc">Только нерешенные</div>
+              </div>
+            </div>
+            <div class="radio-card" data-value="no_attempts">
+              <div class="radio-card-icon">✨</div>
+              <div class="radio-card-content">
+                <div class="radio-card-title">Новые</div>
+                <div class="radio-card-desc">Без попыток ответа</div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="form-group" style="margin-top: 1.25rem; margin-bottom: 0.25rem;">
-          <label class="checkbox-label"
-            style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-main); font-weight: normal; font-size: 0.95rem; user-select: none;">
-            <input type="checkbox" id="chk-only-difficult"
-              style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--warning);">
-            <span>Только сложные вопросы ★</span>
-          </label>
+        <div class="form-group" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.25rem; margin-bottom: 1.25rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 0.75rem 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <div style="font-size: 1.25rem; color: var(--warning); line-height: 1;">★</div>
+            <div style="display: flex; flex-direction: column;">
+              <span style="font-weight: 600; font-size: 0.85rem; color: var(--text-main); line-height: 1.2;">Сложные вопросы</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted); line-height: 1.2; margin-top: 2px;">Показывать только отмеченные звездой</span>
+            </div>
+          </div>
+          <input type="checkbox" id="chk-only-difficult" style="display: none;">
+          <button type="button" id="btn-toggle-only-difficult" class="btn-toggle-only-difficult">
+            Не только сложные
+          </button>
         </div>
       </div>
 
