@@ -147,6 +147,25 @@
           <input type="file" id="module-file-input" accept=".md" style="display: none;">
         </div>
 
+        <!-- GitHub Template Banner -->
+        <div class="github-star-banner" style="margin-top: 0.5rem; margin-bottom: 0.75rem;">
+          <div class="github-star-banner-content" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+              <span style="font-size: 0.85rem; color: var(--text-main);">Используйте правила создания файлов</span>
+            </div>
+            <a href="https://github.com/Rimuwu/vibe-preparation/blob/main/FORMATTING.md" target="_blank" class="btn-star-github" style="background: rgba(138, 180, 248, 0.15); color: var(--primary); border-color: rgba(138, 180, 248, 0.4); font-size: 0.8rem; text-decoration: none;">
+              Шаблон на GitHub
+            </a>
+          </div>
+        </div>
+
         <button id="btn-create-empty-module" class="btn-action"
           style="padding: 0.6rem; font-size: 0.85rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.25rem;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -283,7 +302,7 @@
                   points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
                 </polygon>
               </svg>
-              ⭐ Поставить звезду
+              Поставить звезду
             </a>
           </div>
         </div>
@@ -440,6 +459,15 @@
                 </polygon>
               </svg>
               <span>Сложный вопрос</span>
+            </button>
+
+            <!-- Next question (Choice mode only) -->
+            <button id="btn-next-question" class="btn-action btn-primary" style="display: none; grid-column: span 2;">
+              Далее
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 18 15 12 9 6"></polyline>
+              </svg>
             </button>
           </div>
 

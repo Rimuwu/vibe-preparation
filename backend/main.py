@@ -57,6 +57,13 @@ def get_db():
             print("[MongoDB] Unique index on (profileId, moduleId) verified/created.")
         except Exception as idx_err:
             print(f"[MongoDB] Warning: could not create index: {idx_err}")
+
+        try:
+            # Create a TTL index on 'updatedAt' field with expireAfterSeconds=604800 (7 days)
+            _db.leaderboard.create_index("updatedAt", expireAfterSeconds=7 * 24 * 60 * 60)
+            print("[MongoDB] TTL index on 'updatedAt' verified/created.")
+        except Exception as ttl_err:
+            print(f"[MongoDB] Warning: could not create TTL index: {ttl_err}")
         return _db
     except Exception as e:
         print(f"[MongoDB] Connection failed: {e}")

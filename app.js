@@ -23,6 +23,7 @@ localStorage.setItem = function (key, value) {
 import { parseMarkdown } from './parser.js';
 import {
   getStats,
+  saveStats,
   recordAnswer,
   toggleDifficult,
   addAcceptedAnswer,
@@ -264,6 +265,9 @@ function showModalEditQuestion(q, isNew = false) {
   return new Promise((resolve) => {
     modalTitle.textContent = isNew ? 'Добавить вопрос' : 'Редактировать вопрос/ответ';
 
+    const currentAccepted = isNew ? [] : (getQuestionStats(q.id).acceptedAnswers || []);
+    const currentTags = q.tags || [];
+
     // Generate form
     modalBody.innerHTML = `
       <div class="form-group">
@@ -275,12 +279,20 @@ function showModalEditQuestion(q, isNew = false) {
         <textarea id="edit-q-title" class="text-control" style="min-height: 80px;">${q.title || ''}</textarea>
       </div>
       <div class="form-group">
+        <label for="edit-q-tags">Теги (через пробел или запятую)</label>
+        <input type="text" id="edit-q-tags" class="search-input" value="${currentTags.join(', ')}" placeholder="например: js, basics">
+      </div>
+      <div class="form-group">
         <label for="edit-q-short">Краткий ответ / Код</label>
         <textarea id="edit-q-short" class="text-control" style="min-height: 120px; font-family: monospace;">${q.shortAnswer || ''}</textarea>
       </div>
       <div class="form-group">
         <label for="edit-q-detailed">Подробное пояснение</label>
         <textarea id="edit-q-detailed" class="text-control" style="min-height: 150px;">${q.detailedAnswer || ''}</textarea>
+      </div>
+      <div class="form-group">
+        <label for="edit-q-accepted">База знаний: альтернативные правильные ответы (каждый с новой строки)</label>
+        <textarea id="edit-q-accepted" class="text-control" style="min-height: 80px;" placeholder="Впишите варианты правильных ответов для проверки на совпадение...">${currentAccepted.join('\n')}</textarea>
       </div>
     `;
 
@@ -306,6 +318,18 @@ function showModalEditQuestion(q, isNew = false) {
       const shortAnswer = document.getElementById('edit-q-short').value.trim();
       const detailedAnswer = document.getElementById('edit-q-detailed').value.trim();
 
+      const tagsRaw = document.getElementById('edit-q-tags').value;
+      const tags = tagsRaw
+        .split(/[\s,]+/)
+        .map(t => t.replace(/^#/, '').trim().toLowerCase())
+        .filter(t => t.length > 0);
+
+      const acceptedRaw = document.getElementById('edit-q-accepted').value;
+      const acceptedAnswers = acceptedRaw
+        .split('\n')
+        .map(a => a.trim())
+        .filter(a => a.length > 0);
+
       if (!title) {
         showModalAlert('Заголовок вопроса не может быть пустым.');
         return;
@@ -315,7 +339,9 @@ function showModalEditQuestion(q, isNew = false) {
         category: category || 'Общее',
         title,
         shortAnswer,
-        detailedAnswer
+        detailedAnswer,
+        tags,
+        acceptedAnswers
       });
     }
 
@@ -389,7 +415,8 @@ function serializeQuestionsToMarkdown(questions, moduleName) {
 
     categories[catName].forEach(q => {
       const star = q.isStarred ? '[!] ' : '';
-      md += `### ${star}${q.number}. ${q.title}\n`;
+      const tagsStr = q.tags && q.tags.length > 0 ? ' ' + q.tags.map(t => '#' + t).join(' ') : '';
+      md += `### ${star}${q.number}. ${q.title}${tagsStr}\n`;
 
       // If it's a multiple choice question
       if (q.type === 'choice' && q.choices && q.choices.length > 0) {
@@ -1011,6 +1038,14 @@ function setupEventListeners() {
       dbQuestions.push(newQ);
       saveAddedQuestion(activeModule.id, newQ);
 
+      // Save accepted answers to stats
+      const stats = getStats();
+      if (!stats[newQ.id]) {
+        stats[newQ.id] = { correctCount: 0, incorrectCount: 0, acceptedAnswers: [] };
+      }
+      stats[newQ.id].acceptedAnswers = updated.acceptedAnswers;
+      saveStats(stats);
+
       if (activeModule.isCustom) {
         updateCustomModuleMd(activeModule.id);
       }
@@ -1049,6 +1084,14 @@ function setupEventListeners() {
         Object.assign(q, updated);
         saveQuestionEdit(activeModule.id, q.id, updated);
 
+        // Save accepted answers to stats
+        const stats = getStats();
+        if (!stats[q.id]) {
+          stats[q.id] = { correctCount: 0, incorrectCount: 0, acceptedAnswers: [] };
+        }
+        stats[q.id].acceptedAnswers = updated.acceptedAnswers;
+        saveStats(stats);
+
         if (activeModule.isCustom) {
           updateCustomModuleMd(activeModule.id);
         }
@@ -1065,6 +1108,15 @@ function setupEventListeners() {
   btnPrevQuestion.addEventListener('click', goToPrevQuestion);
   btnDifficult.addEventListener('click', toggleCardDifficult);
   btnAcceptAlternative.addEventListener('click', acceptAlternativeAnswer);
+
+  const btnNextQuestion = document.getElementById('btn-next-question');
+  if (btnNextQuestion) {
+    btnNextQuestion.addEventListener('click', () => {
+      currentIndex++;
+      saveActiveSession();
+      loadCard(currentIndex);
+    });
+  }
 
   // Export / Import progress
   btnExportProgress.addEventListener('click', exportProgress);
@@ -1671,21 +1723,31 @@ function setupQtypeUI(q, qType) {
   document.getElementById('free-input-container').style.display = 'none';
   btnAcceptAlternative.style.display = 'none';
 
+  const btnNextQuestion = document.getElementById('btn-next-question');
+  if (btnNextQuestion) btnNextQuestion.style.display = 'none';
+
   btnCorrect.disabled = false;
   btnIncorrect.disabled = false;
 
   if (qType === 'choice') {
+    btnCorrect.style.display = 'none';
+    btnIncorrect.style.display = 'none';
     generateMultipleChoiceOptions(q);
-  } else if (qType === 'input') {
-    typedAnswer.value = '';
-    inputFeedback.style.display = 'none';
-    inputFeedback.className = 'input-feedback';
-    inputContainer.style.display = 'flex';
-    btnCorrect.disabled = true;
-    btnIncorrect.disabled = true;
-  } else if (qType === 'free') {
-    document.getElementById('free-typed-answer').value = '';
-    document.getElementById('free-input-container').style.display = 'flex';
+  } else {
+    btnCorrect.style.display = 'flex';
+    btnIncorrect.style.display = 'flex';
+
+    if (qType === 'input') {
+      typedAnswer.value = '';
+      inputFeedback.style.display = 'none';
+      inputFeedback.className = 'input-feedback';
+      inputContainer.style.display = 'flex';
+      btnCorrect.disabled = true;
+      btnIncorrect.disabled = true;
+    } else if (qType === 'free') {
+      document.getElementById('free-typed-answer').value = '';
+      document.getElementById('free-input-container').style.display = 'flex';
+    }
   }
 }
 
@@ -1766,8 +1828,19 @@ function generateMultipleChoiceOptions(q) {
   let options = [];
 
   if (q.type === 'choice' && q.choices && q.choices.length > 0) {
-    // If the question is structured as multiple choice in MD
-    options = q.choices.map(c => ({
+    const correctChoices = q.choices.filter(c => c.isCorrect);
+    const incorrectChoices = q.choices.filter(c => !c.isCorrect);
+
+    // Display up to 4 options including all correct ones
+    const targetSize = 4;
+    const selectedCorrect = [...correctChoices];
+
+    // Randomly select incorrect options to fill the rest of the options
+    const neededIncorrect = Math.max(0, targetSize - selectedCorrect.length);
+    const shuffledIncorrect = shuffleArray(incorrectChoices);
+    const selectedIncorrect = shuffledIncorrect.slice(0, neededIncorrect);
+
+    options = [...selectedCorrect, ...selectedIncorrect].map(c => ({
       text: c.text,
       isCorrect: c.isCorrect
     }));
@@ -1813,12 +1886,19 @@ function generateMultipleChoiceOptions(q) {
       // Highlight outcome
       if (opt.isCorrect) {
         btn.classList.add('correct');
-        // Pre-enable navigation correct button
-        btnCorrect.disabled = false;
-        btnIncorrect.disabled = true;
+
         recordAnswer(q.id, true);
+        sessionAnswers[currentIndex] = true;
         sessionCorrect++;
         sessionAttempts++;
+        saveActiveSession();
+
+        // Auto transition after a small delay
+        setTimeout(() => {
+          currentIndex++;
+          saveActiveSession();
+          loadCard(currentIndex);
+        }, 1000);
       } else {
         btn.classList.add('incorrect');
         // Find correct button and color it green
@@ -1828,16 +1908,19 @@ function generateMultipleChoiceOptions(q) {
             b.classList.add('correct');
           }
         });
-        btnCorrect.disabled = true;
-        btnIncorrect.disabled = false;
-        recordAnswer(q.id, false);
-        sessionAttempts++;
-      }
 
-      // Auto flip after a small delay to read explanations
-      setTimeout(() => {
-        if (!isCardFlipped) flipCard();
-      }, 1000);
+        recordAnswer(q.id, false);
+        sessionAnswers[currentIndex] = false;
+        sessionAttempts++;
+        saveActiveSession();
+
+        // Auto flip after a small delay to read explanations and show Next button
+        setTimeout(() => {
+          if (!isCardFlipped) flipCard();
+          const btnNextQuestion = document.getElementById('btn-next-question');
+          if (btnNextQuestion) btnNextQuestion.style.display = 'flex';
+        }, 1000);
+      }
     });
 
     choiceContainer.appendChild(btn);
@@ -1858,7 +1941,13 @@ function evaluateTypedAnswer() {
   }
 
   const qStats = getQuestionStats(q.id);
-  const correctTemplate = q.shortAnswer || '';
+  let correctTemplate = q.shortAnswer || '';
+  if (!correctTemplate && q.type === 'choice' && q.choices) {
+    const correctChoice = q.choices.find(c => c.isCorrect);
+    if (correctChoice) {
+      correctTemplate = correctChoice.text;
+    }
+  }
 
   const isMatched = fuzzyMatch(typed, correctTemplate, qStats.acceptedAnswers || []);
 
@@ -2731,6 +2820,14 @@ function renderViewerList() {
       if (updated) {
         Object.assign(q, updated);
         saveQuestionEdit(activeModule.id, q.id, updated);
+
+        // Save accepted answers to stats
+        const stats = getStats();
+        if (!stats[q.id]) {
+          stats[q.id] = { correctCount: 0, incorrectCount: 0, acceptedAnswers: [] };
+        }
+        stats[q.id].acceptedAnswers = updated.acceptedAnswers;
+        saveStats(stats);
 
         if (activeModule.isCustom) {
           updateCustomModuleMd(activeModule.id);
