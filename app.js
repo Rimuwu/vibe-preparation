@@ -53,6 +53,7 @@ let allModules = [];          // Combined list of standard and custom modules
 let viewerActiveTag = null;
 let statsActiveTag = null;
 let currentChoiceOptions = []; // Shuffled options for the current question in test mode
+let activeTicketId = null;     // ID of the active ticket being solved, or null
 
 
 // DOM Elements
@@ -64,8 +65,17 @@ const screenViewer = document.getElementById('screen-viewer');
 const screenLists = document.getElementById('screen-lists');
 const screenLeaderboard = document.getElementById('screen-leaderboard');
 const screenSettings = document.getElementById('screen-settings');
+const screenTickets = document.getElementById('screen-tickets');
 
 const btnShowStats = document.getElementById('btn-show-stats');
+const btnShowTickets = document.getElementById('btn-show-tickets');
+const ticketModuleSelect = document.getElementById('ticket-module-select');
+const ticketTotalCount = document.getElementById('ticket-total-count');
+const ticketRulesContainer = document.getElementById('ticket-rules-container');
+const btnGenerateTickets = document.getElementById('btn-generate-tickets');
+const ticketsListContainer = document.getElementById('tickets-list-container');
+const ticketsEmpty = document.getElementById('tickets-empty');
+const ticketSolveMode = document.getElementById('ticket-solve-mode');
 const btnShowLeaderboard = document.getElementById('btn-show-leaderboard');
 const btnShowHome = document.getElementById('btn-show-home');
 const btnShowViewer = document.getElementById('btn-show-viewer');
@@ -491,6 +501,7 @@ async function initApp() {
           sessionCorrect = state.sessionCorrect;
           sessionAttempts = state.sessionAttempts;
           sessionAnswers = state.sessionAnswers || new Array(sessionQueue.length).fill(null);
+          activeTicketId = state.activeTicketId || null;
 
           // Restore settings
           if (state.settings) {
@@ -844,6 +855,31 @@ function setupEventListeners() {
           switchScreen('modules');
         });
       }
+    });
+  }
+
+  if (btnShowTickets) {
+    btnShowTickets.addEventListener('click', () => {
+      switchScreen('tickets');
+      if (navButtons) navButtons.classList.remove('active');
+    });
+  }
+
+  if (ticketModuleSelect) {
+    ticketModuleSelect.addEventListener('change', () => {
+      renderTicketsScreen();
+    });
+  }
+
+  if (btnGenerateTickets) {
+    btnGenerateTickets.addEventListener('click', () => {
+      generateTickets();
+    });
+  }
+
+  if (ticketSolveMode) {
+    ticketSolveMode.addEventListener('change', () => {
+      localStorage.setItem('vibe_prep_ticket_solve_mode', ticketSolveMode.value);
     });
   }
 
@@ -1575,6 +1611,7 @@ function switchScreen(screenName) {
   if (screenLists) screenLists.classList.remove('active');
   if (screenLeaderboard) screenLeaderboard.classList.remove('active');
   if (screenSettings) screenSettings.classList.remove('active');
+  if (screenTickets) screenTickets.classList.remove('active');
 
   if (screenName === 'modules') {
     if (screenModules) screenModules.classList.add('active');
@@ -1614,6 +1651,10 @@ function switchScreen(screenName) {
     const syncCode = localStorage.getItem('vibe_prep_sync_code');
     updateSyncBadgeUI(!!syncCode, syncCode);
     console.log('[Preparation.vibe] screenSettings activated.');
+  } else if (screenName === 'tickets') {
+    if (screenTickets) screenTickets.classList.add('active');
+    console.log('[Preparation.vibe] screenTickets activated. Rendering...');
+    renderTicketsScreen();
   } else {
     console.warn(`[Preparation.vibe] Unknown screen: "${screenName}"`);
   }
@@ -1653,6 +1694,7 @@ function startStudySession() {
   sessionCorrect = 0;
   sessionAttempts = 0;
   sessionAnswers = new Array(sessionQueue.length).fill(null);
+  activeTicketId = null;
 
   switchScreen('study');
   loadCard(currentIndex);
@@ -1668,6 +1710,7 @@ function saveActiveSession() {
     sessionCorrect,
     sessionAttempts,
     sessionAnswers,
+    activeTicketId,
     settings: {
       category: selectCategory.value,
       algorithm: selectAlgorithm.value,
@@ -1881,6 +1924,11 @@ function recordSessionProgress(isCorrect) {
 
 function finishSession() {
   showModalAlert(`Поздравляем! Сессия завершена.\nРезультат: ${sessionCorrect} из ${sessionAttempts} правильно (${sessionAttempts > 0 ? Math.round(sessionCorrect / sessionAttempts * 100) : 0}%)`);
+  
+  if (activeTicketId && activeModule) {
+    recordTicketStats(activeModule.id, activeTicketId, sessionCorrect, sessionQueue.length);
+  }
+
   clearActiveSession();
   switchScreen('dashboard');
 }
@@ -3273,6 +3321,7 @@ async function startCustomListSession(list) {
     sessionCorrect = 0;
     sessionAttempts = 0;
     sessionAnswers = new Array(sessionQueue.length).fill(null);
+    activeTicketId = null;
 
     selectCategory.value = 'all';
     selectAlgorithm.value = 'sequential';
@@ -4090,4 +4139,459 @@ function updateSettingsMetrics() {
   if (inputInfoEl) {
     inputInfoEl.textContent = `Эталон у ${withShortAnswer.length} из ${totalCount} заданий`;
   }
+}
+
+/* Tickets Generator Section */
+async function renderTicketsScreen() {
+  const savedSolveMode = localStorage.getItem('vibe_prep_ticket_solve_mode');
+  if (savedSolveMode && ticketSolveMode) {
+    ticketSolveMode.value = savedSolveMode;
+  }
+
+  if (allModules.length === 0) {
+    await loadModules();
+  }
+
+  // Populate module selector if empty
+  if (ticketModuleSelect && ticketModuleSelect.options.length === 0) {
+    ticketModuleSelect.innerHTML = '';
+    allModules.forEach(mod => {
+      const opt = document.createElement('option');
+      opt.value = mod.id;
+      opt.textContent = mod.name;
+      ticketModuleSelect.appendChild(opt);
+    });
+    
+    // Default select activeModule if set
+    if (activeModule) {
+      ticketModuleSelect.value = activeModule.id;
+    }
+  }
+
+  if (!ticketModuleSelect) return;
+  const modId = ticketModuleSelect.value;
+  if (!modId) {
+    if (ticketsEmpty) ticketsEmpty.style.display = 'block';
+    if (ticketsListContainer) ticketsListContainer.style.display = 'none';
+    if (ticketRulesContainer) ticketRulesContainer.innerHTML = '';
+    return;
+  }
+
+  const mod = allModules.find(m => m.id === modId);
+  if (!mod) return;
+
+  // Load questions
+  let questions = [];
+  try {
+    if (activeModule && activeModule.id === modId && dbQuestions.length > 0) {
+      questions = dbQuestions;
+    } else {
+      questions = await loadQuestionsForModule(mod);
+    }
+  } catch (err) {
+    console.error('[Preparation.vibe] Failed to load module questions for tickets', err);
+    showModalAlert('Не удалось загрузить вопросы модуля.');
+    return;
+  }
+
+  // Extract categories
+  const categoriesMap = {};
+  questions.forEach(q => {
+    const catName = q.category || 'Общее';
+    categoriesMap[catName] = (categoriesMap[catName] || 0) + 1;
+  });
+  const categories = Object.keys(categoriesMap);
+
+  // Load saved rules if any
+  const savedRulesStr = localStorage.getItem(`vibe_prep_ticket_rules_${modId}`);
+  let savedRules = null;
+  if (savedRulesStr) {
+    try {
+      savedRules = JSON.parse(savedRulesStr);
+    } catch (e) {
+      console.warn('Failed to parse saved ticket rules', e);
+    }
+  }
+
+  // Render rules inputs
+  if (ticketRulesContainer) {
+    ticketRulesContainer.innerHTML = '';
+    categories.forEach(catName => {
+      const N = categoriesMap[catName];
+      
+      // Determine default count
+      let defaultCount = 1;
+      if (categories.length === 2) {
+        defaultCount = (categories[0] === catName) ? 2 : 1;
+      }
+      defaultCount = Math.min(defaultCount, N);
+
+      let defaultLogic = 'sequential';
+
+      // Apply saved rules if available
+      if (savedRules) {
+        const savedRule = savedRules.find(r => r.category === catName);
+        if (savedRule) {
+          if (savedRule.count !== undefined) defaultCount = Math.min(savedRule.count, N);
+          if (savedRule.logic !== undefined) defaultLogic = savedRule.logic;
+        }
+      }
+
+      const row = document.createElement('div');
+      row.className = 'ticket-rule-row';
+      row.innerHTML = `
+        <div class="ticket-rule-info">
+          <div class="ticket-rule-title">${escapeHtml(catName)}</div>
+          <div class="ticket-rule-badge">Доступно вопросов: ${N}</div>
+        </div>
+        <div class="ticket-rule-controls">
+          <div class="ticket-rule-control-group">
+            <span class="ticket-rule-control-label">Вопросов:</span>
+            <input type="number" class="select-control ticket-cat-count" data-category="${escapeHtml(catName)}" min="0" max="${N}" value="${defaultCount}" style="width: 80px; padding: 0.4rem; font-size: 0.85rem; height: 34px; text-align: center; border-radius: var(--radius-sm);">
+          </div>
+          <div class="ticket-rule-control-group">
+            <span class="ticket-rule-control-label">Логика:</span>
+            <select class="select-control ticket-cat-logic" data-category="${escapeHtml(catName)}" style="width: 140px; padding: 0.4rem; font-size: 0.85rem; height: 34px; border-radius: var(--radius-sm);">
+              <option value="sequential" ${defaultLogic === 'sequential' ? 'selected' : ''}>По порядку</option>
+              <option value="random" ${defaultLogic === 'random' ? 'selected' : ''}>Случайно</option>
+            </select>
+          </div>
+        </div>
+      `;
+      ticketRulesContainer.appendChild(row);
+    });
+  }
+
+  // Render saved tickets if any
+  const savedTicketsStr = localStorage.getItem(`vibe_prep_generated_tickets_${modId}`);
+  if (savedTicketsStr && ticketsListContainer) {
+    try {
+      const savedTickets = JSON.parse(savedTicketsStr);
+      renderTicketsList(savedTickets, questions);
+    } catch (e) {
+      console.warn('Failed to parse saved generated tickets', e);
+      if (ticketsEmpty) ticketsEmpty.style.display = 'block';
+      ticketsListContainer.style.display = 'none';
+    }
+  } else {
+    if (ticketsEmpty) ticketsEmpty.style.display = 'block';
+    if (ticketsListContainer) ticketsListContainer.style.display = 'none';
+  }
+}
+
+async function generateTickets() {
+  if (!ticketModuleSelect) return;
+  const modId = ticketModuleSelect.value;
+  const mod = allModules.find(m => m.id === modId);
+  if (!mod) {
+    showModalAlert('Выберите модуль.');
+    return;
+  }
+
+  // Ensure questions are loaded
+  let questions = [];
+  if (activeModule && activeModule.id === modId && dbQuestions.length > 0) {
+    questions = dbQuestions;
+  } else {
+    questions = await loadQuestionsForModule(mod);
+  }
+
+  if (questions.length === 0) {
+    showModalAlert('В выбранном модуле нет вопросов.');
+    return;
+  }
+
+  const numTickets = parseInt(ticketTotalCount.value, 10);
+  if (isNaN(numTickets) || numTickets < 1) {
+    showModalAlert('Укажите корректное количество билетов (минимум 1).');
+    return;
+  }
+
+  // Parse rules from DOM
+  const rules = [];
+  const rows = ticketRulesContainer ? ticketRulesContainer.querySelectorAll('.ticket-rule-row') : [];
+  let totalQuestionsPerTicket = 0;
+
+  for (const row of rows) {
+    const countInput = row.querySelector('.ticket-cat-count');
+    const logicSelect = row.querySelector('.ticket-cat-logic');
+    if (!countInput || !logicSelect) continue;
+
+    const catName = countInput.dataset.category;
+    const count = parseInt(countInput.value, 10);
+    const logic = logicSelect.value;
+
+    if (isNaN(count) || count < 0) {
+      showModalAlert(`Укажите корректное количество вопросов для темы "${catName}".`);
+      return;
+    }
+
+    const catQuestions = questions.filter(q => q.category === catName);
+    if (count > catQuestions.length) {
+      showModalAlert(`Количество вопросов в теме "${catName}" (${catQuestions.length}) меньше, чем указано в билете (${count}).`);
+      return;
+    }
+
+    rules.push({
+      category: catName,
+      count: count,
+      logic: logic,
+      questions: catQuestions.sort((a, b) => a.number - b.number)
+    });
+
+    totalQuestionsPerTicket += count;
+  }
+
+  if (totalQuestionsPerTicket === 0) {
+    showModalAlert('В билете должен быть хотя бы один вопрос.');
+    return;
+  }
+
+  const tickets = [];
+  for (let t = 1; t <= numTickets; t++) {
+    const ticketQuestionIds = [];
+    
+    for (const rule of rules) {
+      if (rule.count === 0) continue;
+
+      const N = rule.questions.length;
+      if (rule.logic === 'sequential') {
+        // Sequential math formula: Index = ((T - 1) + j * M) % N
+        for (let j = 0; j < rule.count; j++) {
+          const idx = ((t - 1) + j * numTickets) % N;
+          ticketQuestionIds.push(rule.questions[idx].id);
+        }
+      } else {
+        // Random logic: pick unique random questions from the category
+        const shuffled = [...rule.questions];
+        shuffleArray(shuffled);
+        for (let j = 0; j < rule.count; j++) {
+          ticketQuestionIds.push(shuffled[j].id);
+        }
+      }
+    }
+
+    tickets.push({
+      ticketId: t,
+      name: `Билет ${t}`,
+      questionIds: ticketQuestionIds
+    });
+  }
+
+  // Save generated tickets and rules
+  localStorage.setItem(`vibe_prep_generated_tickets_${modId}`, JSON.stringify(tickets));
+  const rulesToSave = rules.map(r => ({ category: r.category, count: r.count, logic: r.logic }));
+  localStorage.setItem(`vibe_prep_ticket_rules_${modId}`, JSON.stringify(rulesToSave));
+
+  // Render tickets
+  renderTicketsList(tickets, questions);
+}
+
+function renderTicketsList(tickets, questions) {
+  if (!ticketsListContainer) return;
+  ticketsListContainer.innerHTML = '';
+  
+  if (tickets.length === 0) {
+    if (ticketsEmpty) ticketsEmpty.style.display = 'block';
+    ticketsListContainer.style.display = 'none';
+    return;
+  }
+
+  if (ticketsEmpty) ticketsEmpty.style.display = 'none';
+  ticketsListContainer.style.display = 'grid';
+
+  const modId = ticketModuleSelect ? ticketModuleSelect.value : '';
+  const ticketStatsKey = `vibe_prep_ticket_stats_${modId}`;
+  let ticketStats = {};
+  if (modId) {
+    try {
+      const raw = localStorage.getItem(ticketStatsKey);
+      ticketStats = raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      console.warn('Failed to parse ticket stats', e);
+    }
+  }
+
+  tickets.forEach(ticket => {
+    const card = document.createElement('div');
+    card.className = 'ticket-card';
+    card.dataset.ticketId = ticket.ticketId;
+
+    // Resolve question objects
+    const resolvedQuestions = ticket.questionIds.map(id => questions.find(q => q.id === id)).filter(Boolean);
+
+    // Create header
+    const header = document.createElement('div');
+    header.className = 'ticket-card-header';
+    
+    const num = document.createElement('div');
+    num.className = 'ticket-card-num';
+    num.innerHTML = `🎫 Билет ${ticket.ticketId}`;
+    
+    const count = document.createElement('div');
+    count.className = 'ticket-card-qcount';
+    const qLabel = getQuestionCountLabel(resolvedQuestions.length);
+    count.textContent = `${resolvedQuestions.length} ${qLabel}`;
+    
+    header.appendChild(num);
+    header.appendChild(count);
+    card.appendChild(header);
+
+    // Create list of questions
+    const qList = document.createElement('div');
+    qList.className = 'ticket-card-questions';
+    
+    resolvedQuestions.forEach(q => {
+      const item = document.createElement('div');
+      item.className = 'ticket-card-qitem';
+      const qNumText = q.number ? `${q.number}. ` : '';
+      item.textContent = `${qNumText}${q.title}`;
+      qList.appendChild(item);
+    });
+    
+    card.appendChild(qList);
+
+    // Render stats if the user has attempted this ticket
+    const stat = ticketStats[ticket.ticketId];
+    if (stat) {
+      const percent = stat.total > 0 ? Math.round(stat.correct / stat.total * 100) : 0;
+      
+      let badgeColor = 'var(--error)';
+      let badgeBg = 'var(--error-dark)';
+      let badgeBorder = 'rgba(242, 139, 130, 0.3)';
+      if (percent >= 80) {
+        badgeColor = 'var(--success)';
+        badgeBg = 'var(--success-dark)';
+        badgeBorder = 'rgba(129, 201, 149, 0.3)';
+      } else if (percent >= 50) {
+        badgeColor = 'var(--warning)';
+        badgeBg = 'var(--warning-dark)';
+        badgeBorder = 'rgba(253, 214, 99, 0.3)';
+      }
+      
+      const statBadge = document.createElement('span');
+      statBadge.className = 'brand-badge';
+      statBadge.style.background = badgeBg;
+      statBadge.style.color = badgeColor;
+      statBadge.style.borderColor = badgeBorder;
+      statBadge.style.marginLeft = '0.5rem';
+      statBadge.textContent = `${stat.correct}/${stat.total}`;
+      statBadge.title = `Решено правильно: ${percent}%\nПопыток: ${stat.attempts}`;
+      num.appendChild(statBadge);
+
+      const progressBar = document.createElement('div');
+      progressBar.style.position = 'absolute';
+      progressBar.style.bottom = '0';
+      progressBar.style.left = '0';
+      progressBar.style.height = '4px';
+      progressBar.style.width = `${percent}%`;
+      progressBar.style.background = badgeColor;
+      progressBar.style.transition = 'var(--transition)';
+      card.appendChild(progressBar);
+    }
+
+    // Click handler to solve ticket
+    card.addEventListener('click', () => {
+      startTicketSession(ticket);
+    });
+
+    ticketsListContainer.appendChild(card);
+  });
+}
+
+async function startTicketSession(ticket) {
+  if (!ticketModuleSelect) return;
+  const modId = ticketModuleSelect.value;
+  const mod = allModules.find(m => m.id === modId);
+  if (!mod) return;
+
+  // Load full module questions for dbQuestions
+  let fullQuestions = [];
+  try {
+    fullQuestions = await loadQuestionsForModule(mod);
+  } catch (err) {
+    showModalAlert('Не удалось загрузить вопросы модуля.');
+    return;
+  }
+
+  activeModule = mod;
+  dbQuestions = fullQuestions;
+  fileLoaded = true;
+  localStorage.setItem('vibe_prep_active_module_id', mod.id);
+  populateCategories();
+
+  // Map ticket questionIds to actual question objects from dbQuestions
+  const ticketQuestions = ticket.questionIds.map(id => dbQuestions.find(q => q.id === id)).filter(Boolean);
+  if (ticketQuestions.length === 0) {
+    showModalAlert('В этом билете нет доступных вопросов.');
+    return;
+  }
+
+  // Set application study state
+  sessionQueue = ticketQuestions;
+  currentIndex = 0;
+  sessionCorrect = 0;
+  sessionAttempts = 0;
+  sessionAnswers = new Array(sessionQueue.length).fill(null);
+  activeTicketId = ticket.ticketId;
+
+  // Sync selectors
+  selectCategory.value = 'all';
+  selectAlgorithm.value = 'sequential';
+  if (selectProgressFilter) selectProgressFilter.value = 'all';
+  chkOnlyDifficult.checked = false;
+
+  // Set the ticket solving mode
+  const solveMode = ticketSolveMode ? ticketSolveMode.value : 'free';
+  selectQType.value = solveMode;
+
+  syncCardSelectorsFromSelects();
+  updateSettingsMetrics();
+
+  // Switch screen to study
+  switchScreen('study');
+  loadCard(currentIndex);
+  
+  // Save active session
+  saveActiveSession();
+}
+
+function getQuestionCountLabel(count) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod100 >= 11 && mod100 <= 19) {
+    return 'вопросов';
+  }
+  if (mod10 === 1) {
+    return 'вопрос';
+  }
+  if (mod10 >= 2 && mod10 <= 4) {
+    return 'вопроса';
+  }
+  return 'вопросов';
+}
+
+function recordTicketStats(moduleId, ticketId, correct, total) {
+  const key = `vibe_prep_ticket_stats_${moduleId}`;
+  let stats = {};
+  try {
+    const raw = localStorage.getItem(key);
+    stats = raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.error('[Preparation.vibe] Failed to parse ticket stats', e);
+  }
+
+  const existing = stats[ticketId];
+  const attempts = existing ? (existing.attempts || 0) + 1 : 1;
+  const bestCorrect = existing ? Math.max(existing.bestCorrect || 0, correct) : correct;
+
+  stats[ticketId] = {
+    correct: correct,
+    total: total,
+    bestCorrect: bestCorrect,
+    attempts: attempts,
+    timestamp: Date.now()
+  };
+
+  localStorage.setItem(key, JSON.stringify(stats));
 }

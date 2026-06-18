@@ -99,6 +99,16 @@
             </svg>
             <span class="nav-text">Лидеры</span>
           </button>
+          <button id="btn-show-tickets" class="btn-icon" title="Билеты">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path>
+              <path d="M13 5v2"></path>
+              <path d="M13 17v2"></path>
+              <path d="M13 11v2"></path>
+            </svg>
+            <span class="nav-text">Билеты</span>
+          </button>
           <button id="btn-show-settings" class="btn-icon" title="Настройки">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
@@ -971,6 +981,69 @@
           <div id="leaderboard-empty" style="text-align: center; padding: 2rem; color: var(--text-muted);">
             Загрузка таблицы лидеров...
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. TICKETS GENERATOR SCREEN -->
+    <section id="screen-tickets" class="screen">
+      <!-- Rules Configuration Panel -->
+      <div class="panel">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+          <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+            🎫 Генератор билетов
+          </h2>
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <label for="ticket-module-select" style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Модуль:</label>
+            <select id="ticket-module-select" class="select-control" style="width: auto; padding: 0.4rem 0.75rem; font-size: 0.85rem; height: 36px; border-radius: var(--radius-sm);">
+              <!-- Module options will be populated dynamically -->
+            </select>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="ticket-total-count" style="display: block; margin-bottom: 0.4rem; font-size: 0.85rem; color: var(--text-muted);">
+              Количество билетов для генерации
+            </label>
+            <input type="number" id="ticket-total-count" class="select-control" min="1" max="100" value="35" style="padding: 0.5rem 0.75rem; font-size: 0.9rem; height: 38px; border-radius: var(--radius-sm);">
+          </div>
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="ticket-solve-mode" style="display: block; margin-bottom: 0.4rem; font-size: 0.85rem; color: var(--text-muted);">
+              Режим решения билетов
+            </label>
+            <select id="ticket-solve-mode" class="select-control" style="padding: 0.5rem 0.75rem; font-size: 0.9rem; height: 38px; border-radius: var(--radius-sm);">
+              <option value="free" selected>🗣️ Повторение (Устно)</option>
+              <option value="choice">📝 Тест (Выбор варианта)</option>
+              <option value="input">⌨️ Ввод текста</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="height: 1px; background: var(--border-color); margin: 1.25rem 0;"></div>
+
+        <h3 style="font-size: 0.95rem; font-weight: 600; color: var(--text-muted); margin: 0 0 1rem 0; text-transform: uppercase; letter-spacing: 0.05em;">
+          Правила выбора вопросов по темам
+        </h3>
+
+        <!-- Dynamic Category Rules List -->
+        <div id="ticket-rules-container" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.25rem;">
+          <!-- Dynamically populated list of categories with counts and algorithms -->
+        </div>
+
+        <button id="btn-generate-tickets" class="btn-primary" style="width: 100%; padding: 0.75rem 1.5rem; font-size: 0.9rem; border-radius: var(--radius-sm); font-weight: 600;">
+          Сгенерировать билеты
+        </button>
+      </div>
+
+      <!-- Generated Tickets Grid Panel -->
+      <div class="panel" style="flex-grow: 1;">
+        <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1rem;">Сгенерированные билеты</h2>
+        <div id="tickets-empty" style="text-align: center; padding: 3rem 1.5rem; color: var(--text-muted); background: rgba(255,255,255,0.01); border: 1px dashed var(--border-color); border-radius: var(--radius-md);">
+          Билеты ещё не сгенерированы. Настройте параметры выше и нажмите кнопку генерации.
+        </div>
+        <div id="tickets-list-container" class="tickets-grid" style="display: none;">
+          <!-- Ticket grid items injected here -->
         </div>
       </div>
     </section>

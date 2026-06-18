@@ -247,13 +247,42 @@ export function exportProgressJSON() {
   const added = localStorage.getItem('vibe_prep_question_added') || '{}';
   const customLists = localStorage.getItem('vibe_prep_custom_lists') || '[]';
 
+  // Gather all module-specific ticket rules, stats, and generated tickets
+  const ticketKeys = {};
+  const ruleKeys = {};
+  const ticketStatsKeys = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key.startsWith('vibe_prep_generated_tickets_')) {
+      const modId = key.substring('vibe_prep_generated_tickets_'.length);
+      try {
+        ticketKeys[modId] = JSON.parse(localStorage.getItem(key));
+      } catch (e) {}
+    } else if (key.startsWith('vibe_prep_ticket_rules_')) {
+      const modId = key.substring('vibe_prep_ticket_rules_'.length);
+      try {
+        ruleKeys[modId] = JSON.parse(localStorage.getItem(key));
+      } catch (e) {}
+    } else if (key.startsWith('vibe_prep_ticket_stats_')) {
+      const modId = key.substring('vibe_prep_ticket_stats_'.length);
+      try {
+        ticketStatsKeys[modId] = JSON.parse(localStorage.getItem(key));
+      } catch (e) {}
+    }
+  }
+  const ticketSolveModeVal = localStorage.getItem('vibe_prep_ticket_solve_mode') || 'free';
+
   const backup = {
     version: '1.0',
     stats: stats,
     customModules: JSON.parse(customModules),
     overrides: JSON.parse(overrides),
     added: JSON.parse(added),
-    customLists: JSON.parse(customLists)
+    customLists: JSON.parse(customLists),
+    generatedTickets: ticketKeys,
+    ticketRules: ruleKeys,
+    ticketSolveMode: ticketSolveModeVal,
+    ticketStats: ticketStatsKeys
   };
 
   return JSON.stringify(backup, null, 2);
@@ -289,6 +318,32 @@ export function importProgressJSON(jsonString) {
     // Check if customLists exist
     if (Array.isArray(backup.customLists)) {
       localStorage.setItem('vibe_prep_custom_lists', JSON.stringify(backup.customLists));
+    }
+
+    // Import generated tickets
+    if (backup.generatedTickets && typeof backup.generatedTickets === 'object') {
+      for (const modId in backup.generatedTickets) {
+        localStorage.setItem(`vibe_prep_generated_tickets_${modId}`, JSON.stringify(backup.generatedTickets[modId]));
+      }
+    }
+
+    // Import ticket rules
+    if (backup.ticketRules && typeof backup.ticketRules === 'object') {
+      for (const modId in backup.ticketRules) {
+        localStorage.setItem(`vibe_prep_ticket_rules_${modId}`, JSON.stringify(backup.ticketRules[modId]));
+      }
+    }
+
+    // Import ticket solve mode
+    if (backup.ticketSolveMode) {
+      localStorage.setItem('vibe_prep_ticket_solve_mode', backup.ticketSolveMode);
+    }
+
+    // Import ticket stats
+    if (backup.ticketStats && typeof backup.ticketStats === 'object') {
+      for (const modId in backup.ticketStats) {
+        localStorage.setItem(`vibe_prep_ticket_stats_${modId}`, JSON.stringify(backup.ticketStats[modId]));
+      }
     }
 
     return true;
