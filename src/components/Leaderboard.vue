@@ -29,6 +29,14 @@
       </div>
     </div>
 
+    <!-- Explanation Banner -->
+    <div class="panel rating-info-banner" style="background: rgba(138, 180, 248, 0.05); border-color: rgba(138, 180, 248, 0.15); border-width: 1px; border-style: solid; padding: 0.85rem 1.25rem; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.75rem; border-radius: var(--radius-md);">
+      <span style="font-size: 1.25rem; line-height: 1;">ℹ️</span>
+      <div style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.45;">
+        В рейтинге учитываются результаты ответов только из <strong style="color: #ffffff;">тестового режима</strong> (выбор вариантов ответов). Вопросы, отвеченные в режиме изучения с вводом текста, не влияют на статистику лидерборда.
+      </div>
+    </div>
+
     <!-- Leaderboard Panel -->
     <div class="panel" style="flex-grow: 1; display: flex; flex-direction: column;">
       <div

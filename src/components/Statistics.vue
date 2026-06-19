@@ -116,52 +116,6 @@
       </div>
     </div>
 
-    <!-- Overall Study Progress Panel -->
-    <div class="panel">
-      <h3 style="font-size: 0.95rem; font-weight: 600; margin: 0 0 1rem 0; display: flex; align-items: center; gap: 0.5rem; color: #ffffff;">
-        🎯 Общий прогресс обучения
-      </h3>
-      <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-        <!-- Themes Progress -->
-        <div>
-          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.5rem; align-items: center;">
-            <span style="color: var(--text-muted); font-weight: 500;">Изучение тем</span>
-            <span style="color: #ffffff; font-weight: 600;">
-              {{ themesStats.averagePct }}%
-              <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; margin-left: 0.25rem;">
-                ({{ themesStats.completedCount }} из {{ themesStats.totalCount }})
-              </span>
-            </span>
-          </div>
-          <div style="height: 10px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: var(--radius-sm); overflow: hidden; position: relative;">
-            <div 
-              style="height: 100%; background: linear-gradient(90deg, #81c995 0%, #a8dab5 100%); border-radius: var(--radius-sm); transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);"
-              :style="{ width: themesStats.averagePct + '%' }"
-            ></div>
-          </div>
-        </div>
-
-        <!-- Tags Progress -->
-        <div v-if="allTags.size > 0">
-          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.5rem; align-items: center;">
-            <span style="color: var(--text-muted); font-weight: 500;">Изучение тегов</span>
-            <span style="color: #ffffff; font-weight: 600;">
-              {{ Math.round((learnedTagsCount / allTags.size) * 100) }}%
-              <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; margin-left: 0.25rem;">
-                ({{ learnedTagsCount }} из {{ allTags.size }})
-              </span>
-            </span>
-          </div>
-          <div style="height: 10px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: var(--radius-sm); overflow: hidden; position: relative;">
-            <div 
-              style="height: 100%; background: linear-gradient(90deg, #8ab4f8 0%, #c2dbff 100%); border-radius: var(--radius-sm); transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);"
-              :style="{ width: (allTags.size > 0 ? Math.round((learnedTagsCount / allTags.size) * 100) : 0) + '%' }"
-            ></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Rating Panel (Test Mode Stats for Leaderboard) -->
     <div class="panel rating-panel">
       <h3 style="font-size: 0.95rem; font-weight: 600; margin: 0 0 1rem 0; display: flex; align-items: center; gap: 0.5rem; color: #ffffff;">
@@ -207,6 +161,52 @@
                     ? 'linear-gradient(90deg, #fbbc04 0%, #fdd663 100%)'
                     : 'linear-gradient(90deg, #f28b82 0%, #fcb6b0 100%)'
               }"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overall Study Progress Panel -->
+    <div class="panel">
+      <h3 style="font-size: 0.95rem; font-weight: 600; margin: 0 0 1rem 0; display: flex; align-items: center; gap: 0.5rem; color: #ffffff;">
+        🎯 Общий прогресс обучения
+      </h3>
+      <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+        <!-- Themes Progress -->
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.5rem; align-items: center;">
+            <span style="color: var(--text-muted); font-weight: 500;">Изучение тем</span>
+            <span style="color: #ffffff; font-weight: 600;">
+              {{ themesStats.averagePct }}%
+              <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; margin-left: 0.25rem;">
+                ({{ themesStats.completedCount }} из {{ themesStats.totalCount }})
+              </span>
+            </span>
+          </div>
+          <div style="height: 10px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: var(--radius-sm); overflow: hidden; position: relative;">
+            <div 
+              style="height: 100%; background: linear-gradient(90deg, #81c995 0%, #a8dab5 100%); border-radius: var(--radius-sm); transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);"
+              :style="{ width: themesStats.averagePct + '%' }"
+            ></div>
+          </div>
+        </div>
+
+        <!-- Tags Progress -->
+        <div v-if="allTags.size > 0">
+          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.5rem; align-items: center;">
+            <span style="color: var(--text-muted); font-weight: 500;">Изучение тегов</span>
+            <span style="color: #ffffff; font-weight: 600;">
+              {{ Math.round((learnedTagsCount / allTags.size) * 100) }}%
+              <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400; margin-left: 0.25rem;">
+                ({{ learnedTagsCount }} из {{ allTags.size }})
+              </span>
+            </span>
+          </div>
+          <div style="height: 10px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: var(--radius-sm); overflow: hidden; position: relative;">
+            <div 
+              style="height: 100%; background: linear-gradient(90deg, #8ab4f8 0%, #c2dbff 100%); border-radius: var(--radius-sm); transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);"
+              :style="{ width: (allTags.size > 0 ? Math.round((learnedTagsCount / allTags.size) * 100) : 0) + '%' }"
             ></div>
           </div>
         </div>
