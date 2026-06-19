@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from pymongo import MongoClient
 from dotenv import load_dotenv
+from bson import ObjectId
 
 # Load env variables from root-level .env if present
 # We also try reading from the current directory .env as fallback
@@ -336,6 +337,7 @@ def get_leaderboard(module_id: str):
         response_list.append({
             "rank": rank,
             "nickname": entry["nickname"],
+            "id": str(entry["_id"]),  # Public document ID instead of secret profileId
             "completedCount": entry["completedCount"],
             "totalCount": entry["totalCount"],
             "accuracy": entry["accuracy"],
@@ -343,3 +345,50 @@ def get_leaderboard(module_id: str):
         })
         
     return response_list
+
+@app.get("/api/public-stats/{entry_id}")
+def get_public_stats(entry_id: str):
+    db = get_db()
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Database connection is currently unavailable"
+        )
+    
+    try:
+        obj_id = ObjectId(entry_id)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid entry ID format"
+        )
+        
+    leaderboard_doc = db.leaderboard.find_one({"_id": obj_id})
+    if leaderboard_doc is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Leaderboard entry not found"
+        )
+        
+    profile_id = leaderboard_doc.get("profileId")
+    if not profile_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Sync profile not linked to this entry"
+        )
+        
+    sync_doc = db.sync_data.find_one({"code": profile_id})
+    if sync_doc is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Sync profile data not found or has expired"
+        )
+        
+    # Return only public statistics without exposing sensitive profileId or keys
+    return {
+        "nickname": leaderboard_doc["nickname"],
+        "data": {
+            "stats": sync_doc["data"].get("stats", {}),
+            "activityLog": sync_doc["data"].get("activityLog", {})
+        }
+    }
