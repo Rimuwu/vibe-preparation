@@ -1,6 +1,6 @@
 {
   "name": "Preparation.vibe",
-  "short_name": "Prep.vibe",
+  "short_name": "Vibe",
   "description": "Интерактивная платформа для подготовки к экзаменам — карточки, статистика, соревнования",
   "start_url": "/vibe-preparation/",
   "scope": "/vibe-preparation/",
@@ -33,14 +33,14 @@
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Мобильный интерфейс Prep.vibe"
+      "label": "Мобильный интерфейс Vibe"
     },
     {
       "src": "screenshots/desktop.png",
       "sizes": "1920x1080",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Десктопный интерфейс Prep.vibe"
+      "label": "Десктопный интерфейс Vibe"
     }
   ]
 }

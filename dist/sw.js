@@ -2,11 +2,6 @@ const CACHE_NAME = 'vibe-prep-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/app.js',
-  '/styles.css',
-  '/parser.js',
-  '/stats.js',
-  '/algorithms.js',
   '/config.json',
   '/manifest.json',
   '/icons/icon-192.png',
@@ -63,8 +58,8 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => caches.match(request))
-    );
-    return;
+      );
+      return;
   }
 
   // Cache-first for everything else (static assets)

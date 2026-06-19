@@ -2,8 +2,6 @@
  * Algorithms module for sorting and shuffling question indexes.
  */
 
-import { getStats } from './stats.js';
-
 // Shuffle helper using Fisher-Yates algorithm
 function shuffle(array) {
   const result = [...array];
@@ -19,16 +17,17 @@ function shuffle(array) {
  * @param {Array} questions - Raw list of parsed questions.
  * @param {String} category - Selected category ('all' or specific category name).
  * @param {String} algorithm - Selected algorithm ('sequential', 'random', 'difficult_first').
+ * @param {Boolean} onlyDifficult - Filter by difficult.
+ * @param {String} progressFilter - Filter by progress ('all', 'no_correct', 'no_attempts').
+ * @param {Object} stats - User progress statistics from store.
  * @returns {Array} - Ordered array of questions to study.
  */
-export function prepareSession(questions, category, algorithm, onlyDifficult = false, progressFilter = 'all') {
+export function prepareSession(questions, category, algorithm, onlyDifficult = false, progressFilter = 'all', stats = {}) {
   // 1. Filter by category
   let filtered = questions;
   if (category && category !== 'all') {
     filtered = questions.filter(q => q.category === category);
   }
-
-  const stats = getStats();
 
   // 1b. Filter by difficulty
   if (onlyDifficult) {
@@ -62,8 +61,6 @@ export function prepareSession(questions, category, algorithm, onlyDifficult = f
   }
 
   if (algorithm === 'difficult_first') {
-    const stats = getStats();
-    
     // Sort questions by computed difficulty score descending
     return [...filtered].sort((a, b) => {
       const statA = stats[a.id] || {};
