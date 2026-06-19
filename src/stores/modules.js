@@ -340,6 +340,36 @@ export const useModulesStore = defineStore('modules', {
       return md;
     },
 
+    async createModuleFromMarkdown(mdText) {
+      const parsed = parseMarkdown(mdText);
+      if (parsed.length === 0) {
+        throw new Error('В сгенерированном ответе не найдено корректных вопросов.');
+      }
+
+      let customName = 'Сгенерированная тема';
+      const firstLine = mdText.split('\n')[0];
+      if (firstLine.startsWith('# ')) {
+        customName = firstLine.replace('# ', '').trim();
+      }
+
+      const newMod = {
+        id: 'custom_' + Date.now(),
+        name: customName,
+        description: 'Сгенерировано ИИ',
+        mdText: mdText,
+        isCustom: true
+      };
+
+      const customRaw = localStorage.getItem(CUSTOM_MODS_KEY);
+      const list = customRaw ? JSON.parse(customRaw) : [];
+      list.push(newMod);
+      localStorage.setItem(CUSTOM_MODS_KEY, JSON.stringify(list));
+
+      this.modules.push(newMod);
+      useProgressStore().touchSyncTimestamp();
+      return newMod;
+    },
+
     async handleCustomModuleImport(file, customName, customDesc) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();

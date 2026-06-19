@@ -91,6 +91,29 @@
                 <h4>Подробное пояснение</h4>
                 <div class="answer-text markdown-body" v-html="renderedDetailedAnswer"></div>
               </div>
+
+              <!-- AI opinion in free mode -->
+              <div v-if="qtype === 'free' && freeNote.trim() && progressStore.aiEnabled && freeAiFeedback" style="margin-top: 1rem; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span>{{ freeAiFeedback }}</span>
+              </div>
+
+              <!-- Explain Simpler Button -->
+              <div v-if="progressStore.aiEnabled" style="margin-top: auto; display: flex; justify-content: flex-end;">
+                <button
+                  type="button"
+                  class="btn-action"
+                  style="font-size: 0.8rem; padding: 0.4rem 0.75rem; border: 1px solid var(--primary); background: transparent; color: var(--primary); border-radius: 100px;"
+                  :disabled="explainingSimpler"
+                  @click="handleExplainSimpler"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                  </svg>
+                  {{ explainingSimpler ? 'Упрощаю...' : 'Объясни проще' }}
+                </button>
+              </div>
             </div>
             <div class="card-instructions">Нажмите для возврата к вопросу</div>
           </div>
@@ -121,14 +144,43 @@
           <label for="typed-answer" style="font-size: 0.8rem; color: var(--text-muted);">
             Введите ваш ответ:
           </label>
-          <textarea
-            id="typed-answer"
-            class="text-control"
-            v-model="typedAnswer"
-            placeholder="Напишите ответ своими словами..."
-            :disabled="textChecked"
-            ref="textInputArea"
-          ></textarea>
+          <div style="display: flex; gap: 0.5rem; align-items: stretch; width: 100%;">
+            <textarea
+              id="typed-answer"
+              class="text-control"
+              v-model="typedAnswer"
+              placeholder="Напишите ответ своими словами..."
+              :disabled="textChecked"
+              ref="textInputArea"
+              style="flex-grow: 1; resize: vertical; min-height: 60px;"
+            ></textarea>
+            <button
+              v-if="speechSupported && !textChecked"
+              type="button"
+              class="btn-icon voice-input-btn"
+              :class="{ 
+                listening: isListening && listeningTarget === 'typedAnswer',
+                transitioning: speechState === 'starting' || speechState === 'stopping'
+              }"
+              :disabled="speechState === 'starting' || speechState === 'stopping'"
+              title="Голосовой ввод"
+              @click="toggleVoiceInput('typedAnswer')"
+              style="width: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: var(--radius-md); transition: var(--transition);"
+            >
+              <svg v-if="!(isListening && listeningTarget === 'typedAnswer')" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+              <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pulse-mic">
+                <circle cx="12" cy="12" r="3" fill="currentColor"></circle>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            </button>
+          </div>
           
           <button
             v-if="!textChecked"
@@ -153,12 +205,41 @@
           <label for="free-typed-answer" style="font-size: 0.8rem; color: var(--text-muted);">
             Запишите ответ для себя (перед проверкой):
           </label>
-          <textarea
-            id="free-typed-answer"
-            class="text-control"
-            v-model="freeNote"
-            placeholder="Напишите ответ своими словами перед переворотом карточки..."
-          ></textarea>
+          <div style="display: flex; gap: 0.5rem; align-items: stretch; width: 100%;">
+            <textarea
+              id="free-typed-answer"
+              class="text-control"
+              v-model="freeNote"
+              placeholder="Напишите ответ своими словами перед переворотом карточки..."
+              style="flex-grow: 1; resize: vertical; min-height: 60px;"
+            ></textarea>
+            <button
+              v-if="speechSupported"
+              type="button"
+              class="btn-icon voice-input-btn"
+              :class="{ 
+                listening: isListening && listeningTarget === 'freeNote',
+                transitioning: speechState === 'starting' || speechState === 'stopping'
+              }"
+              :disabled="speechState === 'starting' || speechState === 'stopping'"
+              title="Голосовой ввод"
+              @click="toggleVoiceInput('freeNote')"
+              style="width: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: var(--radius-md); transition: var(--transition);"
+            >
+              <svg v-if="!(isListening && listeningTarget === 'freeNote')" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+              <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pulse-mic">
+                <circle cx="12" cy="12" r="3" fill="currentColor"></circle>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
+            </button>
+          </div>
         </div>
 
         <!-- Session Controls -->
@@ -316,6 +397,7 @@ import { useModal } from '../composables/useModal';
 import { marked } from 'marked';
 import Prism from 'prismjs';
 import 'prismjs/themes/prism-tomorrow.css';
+import { verifyAnswer, explainSimpler } from '../utils/ai';
 
 export default {
   name: 'StudyArea',
@@ -334,6 +416,17 @@ export default {
     const feedbackMessage = ref('');
     const alternativeAccepted = ref(false);
     const textInputArea = ref(null);
+
+    // Voice & AI Verification states
+    const speechSupported = ref('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
+    const isListening = ref(false);
+    const speechState = ref('idle'); // 'idle', 'starting', 'listening', 'stopping'
+    const listeningTarget = ref('');
+    const freeAiFeedback = ref('');
+    const checkingFreeAi = ref(false);
+    const explainingSimpler = ref(false);
+    let recognition = null;
+    let startTimeout = null;
 
     const currentIndex = computed(() => progressStore.currentIndex);
     const total = computed(() => progressStore.sessionQueue.length);
@@ -397,6 +490,9 @@ export default {
       textCorrect.value = false;
       feedbackMessage.value = '';
       alternativeAccepted.value = false;
+      freeAiFeedback.value = '';
+      checkingFreeAi.value = false;
+      explainingSimpler.value = false;
 
       if (!currentQuestion.value) return;
 
@@ -568,8 +664,8 @@ export default {
       progressStore.currentScreen = 'dashboard';
     }
 
-    // Fuzzy text verify
-    function checkTypedAnswer() {
+    // Fuzzy text verify with AI option
+    async function checkTypedAnswer() {
       const q = currentQuestion.value;
       const typed = typedAnswer.value.trim();
       
@@ -590,6 +686,61 @@ export default {
         }
       }
 
+      // Check via AI if enabled
+      if (progressStore.aiEnabled) {
+        feedbackMessage.value = '🤖 ИИ проверяет ответ...';
+        textChecked.value = true;
+        
+        try {
+          const result = await verifyAnswer(
+            q.title,
+            typed,
+            correctTemplate,
+            {
+              model: progressStore.aiModel,
+              instructions: progressStore.aiInstructions.verifyAnswer
+            }
+          );
+          
+          textCorrect.value = result.correct;
+          feedbackMessage.value = `🤖 ИИ: ${result.explanation}`;
+          
+          progressStore.sessionAttempts++;
+          if (result.correct) {
+            progressStore.recordAnswer(q.id, true, qtype.value);
+            progressStore.sessionCorrect++;
+            progressStore.sessionAnswers[currentIndex.value] = true;
+            progressStore.saveActiveSession();
+            
+            setTimeout(() => {
+              if (!isFlipped.value) {
+                isFlipped.value = true;
+                nextTick(() => {
+                  Prism.highlightAll();
+                });
+              }
+            }, 1200);
+          } else {
+            progressStore.recordAnswer(q.id, false, qtype.value);
+            progressStore.sessionAnswers[currentIndex.value] = false;
+            progressStore.saveActiveSession();
+            
+            setTimeout(() => {
+              if (!isFlipped.value) {
+                isFlipped.value = true;
+                nextTick(() => {
+                  Prism.highlightAll();
+                });
+              }
+            }, 1500);
+          }
+          return; // Skip fuzzy match since AI succeeded
+        } catch (err) {
+          console.warn('AI answer verification failed, falling back to local fuzzy check:', err);
+        }
+      }
+
+      // Local Fuzzy Match Fallback
       const isMatched = fuzzyMatch(typed, correctTemplate, qStats.acceptedAnswers || []);
 
       textChecked.value = true;
@@ -718,6 +869,152 @@ export default {
       flipCard();
     }
 
+    async function checkFreeAnswerWithAi() {
+      if (!progressStore.aiEnabled || !freeNote.value.trim() || !currentQuestion.value) return;
+      
+      checkingFreeAi.value = true;
+      freeAiFeedback.value = '🤖 ИИ оценивает ваш ответ...';
+      
+      const q = currentQuestion.value;
+      let correctTemplate = q.shortAnswer || '';
+      
+      try {
+        const result = await verifyAnswer(
+          q.title,
+          freeNote.value.trim(),
+          correctTemplate,
+          {
+            model: progressStore.aiModel,
+            instructions: progressStore.aiInstructions.verifyAnswer
+          }
+        );
+        freeAiFeedback.value = `🤖 ИИ считает: ${result.correct ? 'Верно' : 'Неверно'} (${result.explanation})`;
+      } catch (e) {
+        freeAiFeedback.value = '🤖 Не удалось получить оценку ИИ.';
+      } finally {
+        checkingFreeAi.value = false;
+      }
+    }
+
+    async function handleExplainSimpler() {
+      if (!currentQuestion.value) return;
+      explainingSimpler.value = true;
+      try {
+        const simpleExp = await explainSimpler(currentQuestion.value, {
+          model: progressStore.aiModel,
+          instructions: progressStore.aiInstructions.explainSimpler
+        });
+        
+        showAlert({
+          title: 'Простое объяснение',
+          message: marked.parse(simpleExp)
+        });
+      } catch (err) {
+        showAlert({
+          message: 'Не удалось получить простое объяснение от ИИ: ' + err.message
+        });
+      } finally {
+        explainingSimpler.value = false;
+      }
+    }
+
+    async function toggleVoiceInput(targetField) {
+      if (!speechSupported.value) return;
+      
+      if (speechState.value === 'starting' || speechState.value === 'stopping') return;
+
+      if (speechState.value === 'listening') {
+        if (listeningTarget.value === targetField) {
+          speechState.value = 'stopping';
+          try {
+            if (recognition) recognition.stop();
+          } catch (e) {
+            console.warn('SpeechRecognition stop error:', e);
+            speechState.value = 'idle';
+          }
+        } else {
+          speechState.value = 'stopping';
+          try {
+            if (recognition) recognition.stop();
+          } catch (e) {
+            console.warn('SpeechRecognition stop error:', e);
+          }
+          listeningTarget.value = targetField;
+          speechState.value = 'starting';
+          setTimeout(() => {
+            startSpeechSession(targetField);
+          }, 400);
+        }
+        return;
+      }
+
+      startSpeechSession(targetField);
+    }
+
+    function startSpeechSession(targetField) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      try {
+        if (recognition) {
+          try { recognition.abort(); } catch(e) {}
+        }
+        
+        recognition = new SpeechRecognition();
+        recognition.lang = 'ru-RU';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = () => {
+          speechState.value = 'listening';
+          isListening.value = true;
+          if (startTimeout) clearTimeout(startTimeout);
+        };
+
+        recognition.onresult = (event) => {
+          const resultText = event.results[0][0].transcript;
+          if (listeningTarget.value === 'typedAnswer') {
+            typedAnswer.value = (typedAnswer.value + ' ' + resultText).trim();
+          } else if (listeningTarget.value === 'freeNote') {
+            freeNote.value = (freeNote.value + ' ' + resultText).trim();
+          }
+        };
+
+        recognition.onerror = (event) => {
+          console.error('Speech recognition error', event);
+          speechState.value = 'idle';
+          isListening.value = false;
+          if (startTimeout) clearTimeout(startTimeout);
+          if (event.error === 'not-allowed') {
+            showAlert({
+              message: 'Доступ к микрофону заблокирован. Пожалуйста, разрешите доступ к микрофону в настройках браузера для использования голосового ввода.'
+            });
+          }
+        };
+
+        recognition.onend = () => {
+          speechState.value = 'idle';
+          isListening.value = false;
+          if (startTimeout) clearTimeout(startTimeout);
+        };
+
+        listeningTarget.value = targetField;
+        speechState.value = 'starting';
+
+        if (startTimeout) clearTimeout(startTimeout);
+        startTimeout = setTimeout(() => {
+          if (speechState.value === 'starting') {
+            console.warn('SpeechRecognition start timeout');
+            speechState.value = 'idle';
+            try { recognition.abort(); } catch(e) {}
+          }
+        }, 5000);
+
+        recognition.start();
+      } catch (e) {
+        console.warn('SpeechRecognition start error:', e);
+        speechState.value = 'idle';
+      }
+    }
+
     function flipCard() {
       // Auto scoring choice modes on flip
       if (qtype.value === 'choice' && choiceSelected.value === null) {
@@ -731,6 +1028,9 @@ export default {
       isFlipped.value = !isFlipped.value;
       
       if (isFlipped.value) {
+        if (qtype.value === 'free' && freeNote.value.trim()) {
+          checkFreeAnswerWithAi();
+        }
         nextTick(() => {
           Prism.highlightAll();
         });
@@ -841,6 +1141,14 @@ export default {
 
     onBeforeUnmount(() => {
       document.removeEventListener('keydown', handleKeydown);
+      if (startTimeout) clearTimeout(startTimeout);
+      if (recognition) {
+        try {
+          recognition.abort();
+        } catch (e) {
+          console.warn('SpeechRecognition abort error:', e);
+        }
+      }
     });
 
     return {
@@ -878,7 +1186,16 @@ export default {
       submitAssessment,
       prevQuestion,
       exitSession,
-      editQuestion
+      editQuestion,
+      speechSupported,
+      isListening,
+      speechState,
+      listeningTarget,
+      freeAiFeedback,
+      checkingFreeAi,
+      explainingSimpler,
+      toggleVoiceInput,
+      handleExplainSimpler
     };
   }
 };
@@ -1303,6 +1620,25 @@ export default {
     font-size: 0.76rem;
     color: var(--text-main);
   }
+}
+
+/* Fix stretching animation of text areas */
+.text-control {
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.75; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.pulse-mic {
+  animation: pulse 1.2s infinite ease-in-out;
+  color: var(--error);
+}
+.voice-input-btn.listening {
+  border-color: var(--error) !important;
+  background: var(--error-dark) !important;
 }
 </style>
 

@@ -84,6 +84,20 @@ export function useModal() {
     };
   };
 
+  const showPromptTextarea = ({ title, message, defaultValue }) => {
+    return new Promise((resolve) => {
+      modal.value = {
+        visible: true,
+        title: title || 'Ввод текста',
+        type: 'prompt-textarea',
+        message: message || '',
+        defaultValue: defaultValue || '',
+        questionData: {},
+        resolve
+      };
+    });
+  };
+
   const onModalCancel = () => {
     const resolveFn = modal.value.resolve;
     modal.value.visible = false;
@@ -104,6 +118,7 @@ export function useModal() {
     showAlert,
     showConfirm,
     showPrompt,
+    showPromptTextarea,
     showEditQuestion,
     showShareCard,
     onModalCancel,

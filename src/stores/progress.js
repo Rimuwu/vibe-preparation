@@ -18,6 +18,14 @@ export const useProgressStore = defineStore('progress', {
     syncTimestamp: localStorage.getItem(SYNC_TIME_KEY) || '',
     deviceId: localStorage.getItem(DEVICE_ID_KEY) || '',
     smartSearchEnabled: localStorage.getItem('vibe_prep_smart_search') !== 'false',
+    aiEnabled: localStorage.getItem('vibe_prep_ai_enabled') !== 'false',
+    aiModel: localStorage.getItem('vibe_prep_ai_model') || 'auto',
+    aiInstructions: {
+      verifyAnswer: localStorage.getItem('vibe_prep_ai_instr_verify') || '',
+      explainSimpler: localStorage.getItem('vibe_prep_ai_instr_simpler') || '',
+      makeDetailed: localStorage.getItem('vibe_prep_ai_instr_detailed') || '',
+      generateModule: localStorage.getItem('vibe_prep_ai_instr_module') || ''
+    },
     customLists: [],
     activityLog: {},
     viewingProfileData: null,
@@ -355,8 +363,24 @@ export const useProgressStore = defineStore('progress', {
       }
     },
 
-    saveActiveSession(settings = {}) {
+    saveActiveSession(settings = null) {
       if (!this.activeModuleId) return;
+      
+      let finalSettings = settings;
+      if (finalSettings === null) {
+        const saved = localStorage.getItem(SESSION_KEY);
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            finalSettings = parsed.settings || {};
+          } catch (e) {
+            finalSettings = {};
+          }
+        } else {
+          finalSettings = {};
+        }
+      }
+
       const sessionState = {
         moduleId: this.activeModuleId,
         sessionQueue: this.sessionQueue,
@@ -365,7 +389,7 @@ export const useProgressStore = defineStore('progress', {
         sessionAttempts: this.sessionAttempts,
         sessionAnswers: this.sessionAnswers,
         activeTicketId: this.activeTicketId,
-        settings
+        settings: finalSettings
       };
       localStorage.setItem(SESSION_KEY, JSON.stringify(sessionState));
     },
@@ -864,6 +888,38 @@ export const useProgressStore = defineStore('progress', {
     setSmartSearch(enabled) {
       this.smartSearchEnabled = enabled;
       localStorage.setItem('vibe_prep_smart_search', enabled.toString());
+    },
+
+    setAiEnabled(enabled) {
+      this.aiEnabled = enabled;
+      localStorage.setItem('vibe_prep_ai_enabled', enabled ? 'true' : 'false');
+      this.touchSyncTimestamp();
+    },
+
+    setAiModel(model) {
+      this.aiModel = model;
+      localStorage.setItem('vibe_prep_ai_model', model);
+      this.touchSyncTimestamp();
+    },
+
+    setAiInstruction(type, text) {
+      if (this.aiInstructions[type] !== undefined) {
+        this.aiInstructions[type] = text;
+        localStorage.setItem(`vibe_prep_ai_instr_${type}`, text);
+        this.touchSyncTimestamp();
+      }
+    },
+
+    resetAiInstructions() {
+      this.aiInstructions.verifyAnswer = '';
+      this.aiInstructions.explainSimpler = '';
+      this.aiInstructions.makeDetailed = '';
+      this.aiInstructions.generateModule = '';
+      localStorage.removeItem('vibe_prep_ai_instr_verify');
+      localStorage.removeItem('vibe_prep_ai_instr_simpler');
+      localStorage.removeItem('vibe_prep_ai_instr_detailed');
+      localStorage.removeItem('vibe_prep_ai_instr_module');
+      this.touchSyncTimestamp();
     },
 
     isQueryMatch(q, query) {

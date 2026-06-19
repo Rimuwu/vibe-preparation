@@ -142,6 +142,160 @@
 
       <div style="height: 1px; background: var(--border-color); margin-bottom: 1.25rem;"></div>
 
+      <!-- AI Settings Section -->
+      <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
+        <h3
+          style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 0;"
+        >
+          Настройки ИИ (G4F)
+        </h3>
+
+        <!-- AI Toggle switch -->
+        <div
+          style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md);"
+        >
+          <div>
+            <span style="font-size: 0.92rem; color: #ffffff; display: block; font-weight: 500;">Интеграция ИИ</span>
+            <span style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.15rem; line-height: 1.3;">
+              Автоматическая проверка ответов, подсказки, генерация тем и чат
+            </span>
+          </div>
+          
+          <label class="switch-container" style="position: relative; display: inline-block; width: 44px; height: 24px;">
+            <input
+              type="checkbox"
+              style="opacity: 0; width: 0; height: 0;"
+              v-model="aiEnabledModel"
+            />
+            <span class="slider" :style="aiSliderStyle"></span>
+          </label>
+        </div>
+
+        <template v-if="progressStore.aiEnabled">
+          <!-- Model Selection Dropdown -->
+          <div class="form-group" style="margin-bottom: 0.5rem;">
+            <label for="select-ai-model">Выбор ИИ Модели</label>
+            <select
+              id="select-ai-model"
+              class="select-control"
+              v-model="aiModelSelected"
+            >
+              <option value="auto">Auto (По умолчанию)</option>
+              <option value="gpt-4o">GPT-4o (g4f)</option>
+              <option value="gpt-4o-mini">GPT-4o-Mini (g4f)</option>
+              <option value="deepseek-v3">DeepSeek V3 (g4f)</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash (g4f)</option>
+            </select>
+          </div>
+
+          <!-- G4F Models Banner -->
+          <div
+            style="padding: 0.75rem 1rem; border-radius: var(--radius-md); background: rgba(138, 180, 248, 0.04); border: 1px solid rgba(138, 180, 248, 0.15); display: flex; flex-direction: column; gap: 0.35rem;"
+          >
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                style="color: var(--primary); flex-shrink: 0;"
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+              <span style="font-size: 0.85rem; font-weight: 500; color: var(--primary);">G4F Модели</span>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; margin: 0;">
+              Использует свободный клиент g4f.dev для доступа к популярным нейросетям без токенов и ключей прямо в браузере. Подробнее:
+              <a href="https://g4f.dev" target="_blank" style="color: var(--primary); text-decoration: underline;">g4f.dev</a>.
+            </p>
+          </div>
+
+          <!-- Expandable AI Instructions Setup -->
+          <div style="margin-top: 0.5rem;">
+            <button
+              type="button"
+              class="btn-action"
+              style="width: 100%; border: 1px solid var(--border-color); background: transparent; color: var(--text-main); font-size: 0.85rem; border-radius: var(--radius-sm); padding: 0.6rem 1rem; justify-content: space-between;"
+              @click="instructionsExpanded = !instructionsExpanded"
+            >
+              <span>⚙️ Настройка инструкций для ИИ</span>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                :style="{ transform: instructionsExpanded ? 'rotate(180deg)' : '', transition: 'transform 0.2s' }"
+              >
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+
+            <div v-if="instructionsExpanded" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.15); border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>Инструкция: Проверка ответа студента</label>
+                <textarea
+                  class="text-control"
+                  style="min-height: 80px; font-size: 0.82rem;"
+                  v-model="instrVerify"
+                  :placeholder="defaultInstructions.verifyAnswer"
+                ></textarea>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>Инструкция: Объяснить проще</label>
+                <textarea
+                  class="text-control"
+                  style="min-height: 80px; font-size: 0.82rem;"
+                  v-model="instrSimpler"
+                  :placeholder="defaultInstructions.explainSimpler"
+                ></textarea>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>Инструкция: Сделать подробнее</label>
+                <textarea
+                  class="text-control"
+                  style="min-height: 80px; font-size: 0.82rem;"
+                  v-model="instrDetailed"
+                  :placeholder="defaultInstructions.makeDetailed"
+                ></textarea>
+              </div>
+
+              <div class="form-group" style="margin-bottom: 0;">
+                <label>Инструкция: Генерация модуля</label>
+                <textarea
+                  class="text-control"
+                  style="min-height: 80px; font-size: 0.82rem;"
+                  v-model="instrModule"
+                  :placeholder="defaultInstructions.generateModule"
+                ></textarea>
+              </div>
+
+              <button
+                type="button"
+                class="btn-action"
+                style="padding: 0.5rem 1rem; font-size: 0.8rem; border-color: var(--error); color: var(--error); background: transparent; border-radius: var(--radius-sm); align-self: flex-start; border: 1px solid var(--error);"
+                @click="resetInstructions"
+              >
+                Сбросить инструкции
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <div style="height: 1px; background: var(--border-color); margin-bottom: 1.25rem;"></div>
+
       <!-- Local Backup section -->
       <div style="display: flex; flex-direction: column; gap: 0.75rem;">
         <h3
@@ -213,6 +367,7 @@ import { computed, ref } from 'vue';
 import { useProgressStore } from '../stores/progress';
 import { useModulesStore } from '../stores/modules';
 import { useModal } from '../composables/useModal';
+import { DEFAULT_INSTRUCTIONS } from '../utils/aiInstructions';
 
 export default {
   name: 'Settings',
@@ -422,6 +577,56 @@ export default {
       };
     });
 
+    // AI configurations
+    const aiEnabledModel = computed({
+      get: () => progressStore.aiEnabled,
+      set: (val) => progressStore.setAiEnabled(val)
+    });
+
+    const aiModelSelected = computed({
+      get: () => progressStore.aiModel,
+      set: (val) => progressStore.setAiModel(val)
+    });
+
+    const instructionsExpanded = ref(false);
+
+    const instrVerify = computed({
+      get: () => progressStore.aiInstructions.verifyAnswer,
+      set: (val) => progressStore.setAiInstruction('verifyAnswer', val)
+    });
+    const instrSimpler = computed({
+      get: () => progressStore.aiInstructions.explainSimpler,
+      set: (val) => progressStore.setAiInstruction('explainSimpler', val)
+    });
+    const instrDetailed = computed({
+      get: () => progressStore.aiInstructions.makeDetailed,
+      set: (val) => progressStore.setAiInstruction('makeDetailed', val)
+    });
+    const instrModule = computed({
+      get: () => progressStore.aiInstructions.generateModule,
+      set: (val) => progressStore.setAiInstruction('generateModule', val)
+    });
+
+    const resetInstructions = () => {
+      progressStore.resetAiInstructions();
+    };
+
+    const aiSliderStyle = computed(() => {
+      const active = progressStore.aiEnabled;
+      return {
+        position: 'absolute',
+        cursor: 'pointer',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: active ? 'var(--primary)' : '#333',
+        transition: '.3s',
+        borderRadius: '24px',
+        border: '1px solid var(--border-color)'
+      };
+    });
+
     return {
       progressStore,
       modulesStore,
@@ -438,7 +643,17 @@ export default {
       triggerImportInput,
       importLocalProgress,
       smartSearchModel,
-      sliderStyle
+      sliderStyle,
+      aiEnabledModel,
+      aiModelSelected,
+      instructionsExpanded,
+      instrVerify,
+      instrSimpler,
+      instrDetailed,
+      instrModule,
+      resetInstructions,
+      defaultInstructions: DEFAULT_INSTRUCTIONS,
+      aiSliderStyle
     };
   }
 };

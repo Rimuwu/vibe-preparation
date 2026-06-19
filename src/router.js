@@ -8,6 +8,7 @@ import CustomLists from './components/CustomLists.vue';
 import Leaderboard from './components/Leaderboard.vue';
 import Settings from './components/Settings.vue';
 import TicketGenerator from './components/TicketGenerator.vue';
+import Chat from './components/Chat.vue';
 import { useProgressStore } from './stores/progress';
 import { useModulesStore } from './stores/modules';
 
@@ -21,6 +22,7 @@ const routes = [
   { path: '/leaderboard', name: 'leaderboard', component: Leaderboard },
   { path: '/settings', name: 'settings', component: Settings },
   { path: '/tickets', name: 'tickets', component: TicketGenerator },
+  { path: '/chat', name: 'chat', component: Chat },
   { path: '/:pathMatch(.*)*', redirect: '/' }
 ];
 
@@ -55,6 +57,13 @@ router.beforeEach(async (to, from, next) => {
       } catch (e) {
         console.warn('[Router] Could not select module', e);
       }
+    }
+  }
+
+  if (to.name === 'chat') {
+    if (!progressStore.aiEnabled) {
+      next({ name: 'modules' });
+      return;
     }
   }
 

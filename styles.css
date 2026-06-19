@@ -105,6 +105,7 @@ body {
   display: flex;
   flex-direction: column;
   position: relative;
+
 }
 
 @media (min-width: 768px) {
@@ -115,6 +116,8 @@ body {
     padding: 2.5rem 2rem;
     margin: 0 auto;
     min-height: 100vh;
+    padding-top: 0.5rem;
+    margin-top: 1rem;
   }
 }
 
@@ -471,10 +474,12 @@ body {
   color: var(--text-muted);
   border-color: rgba(158, 158, 158, 0.25);
 }
+
 .tag-badge.tag-additionalquestion:hover {
   background: rgba(158, 158, 158, 0.22);
   border-color: var(--text-muted);
 }
+
 .tag-badge.tag-additionalquestion.active {
   background: var(--text-muted);
   color: #121212;
@@ -486,10 +491,12 @@ body {
   color: var(--success);
   border-color: rgba(129, 201, 149, 0.25);
 }
+
 .tag-badge.tag-mainquestion:hover {
   background: rgba(129, 201, 149, 0.22);
   border-color: var(--success);
 }
+
 .tag-badge.tag-mainquestion.active {
   background: var(--success);
   color: #121212;
@@ -843,6 +850,7 @@ header {
     opacity: 0;
     transform: translateY(6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -850,8 +858,13 @@ header {
 }
 
 @keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
 }
 
 @keyframes slideDown {
@@ -859,6 +872,7 @@ header {
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -866,8 +880,15 @@ header {
 }
 
 @keyframes starPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.15); }
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.15);
+  }
 }
 
 /* ========================================
@@ -997,9 +1018,11 @@ header {
   .github-star-banner-content {
     flex-wrap: wrap;
   }
+
   .github-star-text p {
     font-size: 0.82rem;
   }
+
   .btn-star-github {
     font-size: 0.78rem;
     padding: 0.35rem 0.7rem;

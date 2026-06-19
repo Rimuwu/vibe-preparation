@@ -28,6 +28,19 @@
             />
           </div>
 
+          <!-- Type: Prompt Textarea -->
+          <div v-else-if="type === 'prompt-textarea'" class="form-group">
+            <label for="prompt-textarea-input" style="display: block; font-size: 0.8rem; font-weight: 500; color: var(--text-muted); margin-bottom: 0.5rem;">{{ message }}</label>
+            <textarea
+              id="prompt-textarea-input"
+              ref="promptTextareaInput"
+              class="text-control"
+              style="min-height: 180px;"
+              v-model="promptValue"
+              placeholder="Введите описание темы или список вопросов..."
+            ></textarea>
+          </div>
+
           <!-- Type: Edit-Question -->
           <div v-else-if="type === 'edit-question'" class="edit-question-form">
             <div class="form-group">
@@ -171,12 +184,21 @@ export default {
   watch: {
     visible(newVal) {
       if (newVal) {
+        document.body.style.overflow = 'hidden';
         if (this.type === 'prompt') {
           this.promptValue = this.defaultValue;
           nextTick(() => {
             if (this.$refs.promptInput) {
               this.$refs.promptInput.focus();
               this.$refs.promptInput.select();
+            }
+          });
+        } else if (this.type === 'prompt-textarea') {
+          this.promptValue = this.defaultValue;
+          nextTick(() => {
+            if (this.$refs.promptTextareaInput) {
+              this.$refs.promptTextareaInput.focus();
+              this.$refs.promptTextareaInput.select();
             }
           });
         } else if (this.type === 'edit-question') {
@@ -188,15 +210,20 @@ export default {
           this.questionForm.detailedAnswer = q.detailedAnswer || '';
           this.questionForm.acceptedText = (q.acceptedAnswers || []).join('\n');
         }
+      } else {
+        document.body.style.overflow = '';
       }
     }
+  },
+  beforeUnmount() {
+    document.body.style.overflow = '';
   },
   methods: {
     onCancel() {
       this.$emit('close');
     },
     onOk() {
-      if (this.type === 'prompt') {
+      if (this.type === 'prompt' || this.type === 'prompt-textarea') {
         this.$emit('ok', this.promptValue.trim());
       } else if (this.type === 'edit-question') {
         if (!this.questionForm.title.trim()) {

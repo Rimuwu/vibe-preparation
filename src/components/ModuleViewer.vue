@@ -312,11 +312,24 @@
             </div>
             
             <!-- Detailed Answer -->
-            <div v-if="q.detailedAnswer" style="margin-top: 0.75rem;">
-              <h4 style="font-size: 0.75rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-color); padding-bottom: 0.25rem; margin-bottom: 0.5rem;">
-                Подробное пояснение
+            <div style="margin-top: 0.75rem;">
+              <h4 style="font-size: 0.75rem; color: var(--primary); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border-color); padding-bottom: 0.25rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <span>Подробное пояснение</span>
+                <button
+                  v-if="progressStore.aiEnabled"
+                  type="button"
+                  class="btn-action"
+                  style="font-size: 0.7rem; padding: 0.2rem 0.5rem; border: 1px solid var(--primary); background: transparent; color: var(--primary); border-radius: 4px; height: auto;"
+                  :disabled="regeneratingDetailedIds.has(q.id)"
+                  @click.stop="handleMakeDetailed(q)"
+                >
+                  {{ regeneratingDetailedIds.has(q.id) ? 'Генерирую...' : 'Сделать подробнее' }}
+                </button>
               </h4>
-              <div class="answer-text markdown-body" v-html="renderQuestionDetailedAnswer(q)"></div>
+              <div v-if="q.detailedAnswer" class="answer-text markdown-body" v-html="renderQuestionDetailedAnswer(q)"></div>
+              <div v-else style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">
+                Пояснение отсутствует. Нажмите «Сделать подробнее», чтобы сгенерировать его.
+              </div>
             </div>
           </div>
         </div>
@@ -361,6 +374,7 @@ import { useProgressStore } from '../stores/progress';
 import { useModal } from '../composables/useModal';
 import { marked } from 'marked';
 import Prism from 'prismjs';
+import { makeDetailed } from '../utils/ai';
 
 export default {
   name: 'ModuleViewer',
@@ -387,6 +401,7 @@ export default {
     const selectedQuestionIds = ref(new Set());
     const expandedQuestionIds = ref(new Set());
     const isAllExpanded = ref(true);
+    const regeneratingDetailedIds = ref(new Set());
 
     // Filter tags cloud
     const allTags = computed(() => {
@@ -736,6 +751,35 @@ export default {
       }
     };
 
+    const handleMakeDetailed = async (q) => {
+      regeneratingDetailedIds.value.add(q.id);
+      try {
+        const detailedText = await makeDetailed(q, {
+          model: progressStore.aiModel,
+          instructions: progressStore.aiInstructions.makeDetailed
+        });
+        
+        modulesStore.editQuestionInModule(modulesStore.activeModule.id, q.id, {
+          detailedAnswer: detailedText
+        });
+        
+        nextTick(() => {
+          Prism.highlightAll();
+        });
+        
+        showAlert({
+          title: 'Успех',
+          message: 'Подробное пояснение успешно сгенерировано!'
+        });
+      } catch (err) {
+        showAlert({
+          message: 'Не удалось сгенерировать подробное пояснение: ' + err.message
+        });
+      } finally {
+        regeneratingDetailedIds.value.delete(q.id);
+      }
+    };
+
     // Synchronize expanded state list when visible list changes
     watch(filteredQuestions, (newVal) => {
       if (isAllExpanded.value) {
@@ -783,7 +827,9 @@ export default {
       filteredQuestions,
       exportMarkdown,
       addQuestion,
-      editQuestion
+      editQuestion,
+      regeneratingDetailedIds,
+      handleMakeDetailed
     };
   }
 };

@@ -160,44 +160,73 @@
         </div>
       </div>
 
-      <!-- Create Empty Module Button -->
-      <button
-        id="btn-create-empty-module"
-        class="btn-action"
-        style="padding: 0.6rem; font-size: 0.85rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.25rem;"
-        @click="createEmpty"
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
+      <!-- Create Empty Module / AI Gen Buttons -->
+      <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+        <button
+          id="btn-create-empty-module"
+          class="btn-action"
+          style="flex: 1; padding: 0.6rem; font-size: 0.85rem; border-color: var(--border-color); border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-main); display: flex; align-items: center; justify-content: center; gap: 0.25rem; min-width: 140px;"
+          @click="createEmpty"
         >
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        Создать пустую тему
-      </button>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Создать пустую тему
+        </button>
+
+        <button
+          v-if="progressStore.aiEnabled"
+          type="button"
+          class="btn-action"
+          style="flex: 1; padding: 0.6rem; font-size: 0.85rem; border-color: var(--primary); border-radius: var(--radius-sm); border: 1px solid var(--primary); background: var(--primary-dark); color: var(--primary); display: flex; align-items: center; justify-content: center; gap: 0.25rem; min-width: 140px;"
+          :disabled="generatingModuleState"
+          @click="openGenerateModuleModal"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+          </svg>
+          {{ generatingModuleState ? 'Генерация...' : 'Генерация темы ИИ' }}
+        </button>
+      </div>
     </div>
   </main>
 </template>
 
 <script>
+import { ref } from 'vue';
 import { useModulesStore } from '../stores/modules';
 import { useProgressStore } from '../stores/progress';
 import { useModal } from '../composables/useModal';
+import { generateModule } from '../utils/ai';
+import formattingRules from '../../FORMATTING.md?raw';
 
 export default {
   name: 'ModuleSelector',
   setup() {
     const modulesStore = useModulesStore();
     const progressStore = useProgressStore();
-    const { showAlert, showConfirm } = useModal();
-    return { modulesStore, progressStore, showAlert, showConfirm };
+    const { showAlert, showConfirm, showPromptTextarea } = useModal();
+    const generatingModuleState = ref(false);
+    return { modulesStore, progressStore, showAlert, showConfirm, showPromptTextarea, generatingModuleState };
   },
   data() {
     return {
@@ -296,6 +325,45 @@ export default {
       });
       
       await this.selectModule(newMod);
+    },
+    async openGenerateModuleModal() {
+      const userQuestionsInput = await this.showPromptTextarea({
+        title: 'Генерация модуля через ИИ',
+        message: 'Введите вопросы, темы или фрагменты информации, на основе которых ИИ создаст готовый модуль:'
+      });
+
+      if (!userQuestionsInput) return;
+
+      this.generatingModuleState = true;
+      try {
+        const generatedMarkdown = await generateModule(
+          userQuestionsInput,
+          formattingRules,
+          {
+            model: this.progressStore.aiModel,
+            instructions: this.progressStore.aiInstructions.generateModule
+          }
+        );
+
+        if (!generatedMarkdown || !generatedMarkdown.trim()) {
+          throw new Error('ИИ вернул пустой результат.');
+        }
+
+        const newMod = await this.modulesStore.createModuleFromMarkdown(generatedMarkdown);
+
+        this.showAlert({
+          title: 'Модуль создан',
+          message: `Новая тема "${newMod.name}" успешно сгенерирована ИИ и импортирована!`
+        });
+
+        await this.selectModule(newMod);
+      } catch (err) {
+        this.showAlert({
+          message: 'Не удалось сгенерировать модуль: ' + err.message
+        });
+      } finally {
+        this.generatingModuleState = false;
+      }
     }
   }
 };
