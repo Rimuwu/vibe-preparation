@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vibe-prep-v2';
+const CACHE_NAME = 'vibe-prep-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -36,15 +36,13 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests and chrome-extension / external URLs
+  // Only handle same-origin GET requests — skip everything else silently
   if (request.method !== 'GET') return;
-  if (!url.origin.includes(self.location.origin) && !url.pathname.startsWith('/')) return;
+  if (url.origin !== self.location.origin) return;
 
-  // For API calls, go network-first
+  // For API calls, go network-first (no cache fallback — fresh data only)
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(
-      fetch(request).catch(() => caches.match(request))
-    );
+    event.respondWith(fetch(request));
     return;
   }
 
