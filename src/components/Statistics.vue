@@ -162,6 +162,57 @@
       </div>
     </div>
 
+    <!-- Rating Panel (Test Mode Stats for Leaderboard) -->
+    <div class="panel rating-panel">
+      <h3 style="font-size: 0.95rem; font-weight: 600; margin: 0 0 1rem 0; display: flex; align-items: center; gap: 0.5rem; color: #ffffff;">
+        🏆 Рейтинговые данные
+        <span style="font-size: 0.75rem; font-weight: 400; color: var(--text-muted); margin-left: auto;">учитывается в лидерборде</span>
+      </h3>
+
+      <div v-if="testStats.totalAttempts === 0" style="text-align: center; padding: 1.25rem 0; color: var(--text-muted); font-size: 0.875rem;">
+        Нет данных тестового режима — пройдите хотя бы один вопрос в режиме «Тест»
+      </div>
+
+      <div v-else>
+        <!-- Rating Stats Grid -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1rem;">
+          <div class="rating-stat-card">
+            <div class="rating-num">{{ testStats.accuracy }}%</div>
+            <div class="rating-label">Точность</div>
+          </div>
+          <div class="rating-stat-card">
+            <div class="rating-num">{{ testStats.answeredCount }}<span style="font-size: 0.7em; color: var(--text-muted);">/{{ testStats.totalQuestions }}</span></div>
+            <div class="rating-label">Пройдено</div>
+          </div>
+          <div class="rating-stat-card">
+            <div class="rating-num">{{ testStats.totalAttempts }}</div>
+            <div class="rating-label">Ответов</div>
+          </div>
+        </div>
+
+        <!-- Accuracy progress bar -->
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.4rem; color: var(--text-muted);">
+            <span>Точность в тестовом режиме</span>
+            <span style="color: #ffffff; font-weight: 600;">{{ testStats.accuracy }}%</span>
+          </div>
+          <div style="height: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-sm); overflow: hidden;">
+            <div
+              style="height: 100%; border-radius: var(--radius-sm); transition: width 0.8s cubic-bezier(0.4,0,0.2,1);"
+              :style="{
+                width: testStats.accuracy + '%',
+                background: testStats.accuracy >= 80
+                  ? 'linear-gradient(90deg, #81c995 0%, #a8dab5 100%)'
+                  : testStats.accuracy >= 50
+                    ? 'linear-gradient(90deg, #fbbc04 0%, #fdd663 100%)'
+                    : 'linear-gradient(90deg, #f28b82 0%, #fcb6b0 100%)'
+              }"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Activity Chart Panel -->
     <div class="panel">
       <h3 style="font-size: 0.95rem; font-weight: 600; margin: 0 0 1rem 0; display: flex; align-items: center; gap: 0.5rem; color: #ffffff;">
@@ -466,7 +517,7 @@
 </template>
 
 <script>
-import { computed, ref, onMounted, watch, nextTick } from 'vue';
+import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useProgressStore } from '../stores/progress';
 import { useModulesStore } from '../stores/modules';
@@ -538,6 +589,26 @@ export default {
         totalDifficult: g.totalDifficult,
         totalAttempts: g.totalCorrect + g.totalIncorrect
       };
+    });
+
+    // Test-mode statistics (used for leaderboard rating)
+    const testStats = computed(() => {
+      const questions = modulesStore.questions;
+      const stats = targetStats.value;
+      let totalCorrect = 0;
+      let totalIncorrect = 0;
+      let answeredCount = 0;
+      questions.forEach(q => {
+        const qStat = stats[q.id] || {};
+        const c = qStat.testCorrectCount || 0;
+        const w = qStat.testIncorrectCount || 0;
+        totalCorrect += c;
+        totalIncorrect += w;
+        if (c + w > 0) answeredCount++;
+      });
+      const totalAttempts = totalCorrect + totalIncorrect;
+      const accuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
+      return { totalCorrect, totalIncorrect, answeredCount, totalQuestions: questions.length, totalAttempts, accuracy };
     });
 
     const streakCount = computed(() => {
@@ -740,14 +811,30 @@ export default {
       });
     };
 
-    watch([() => modulesStore.activeModule, targetActivityLog], () => {
-      nextTick(() => {
-        renderActivityChart();
-      });
-    }, { deep: true });
+    watch(
+      [
+        () => modulesStore.activeModule,
+        () => progressStore.activityLog,
+        () => progressStore.viewingProfileData,
+        activityChartCanvas
+      ],
+      () => {
+        nextTick(() => {
+          renderActivityChart();
+        });
+      },
+      { deep: true }
+    );
 
     onMounted(() => {
       renderActivityChart();
+    });
+
+    onUnmounted(() => {
+      if (chartInstance) {
+        chartInstance.destroy();
+        chartInstance = null;
+      }
     });
 
     // Tag cloud
@@ -1288,6 +1375,7 @@ export default {
       sortBy,
       activeTagFilter,
       globalStats,
+      testStats,
       themesStats,
       allTags,
       learnedTagsCount,
