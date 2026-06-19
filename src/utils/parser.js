@@ -3,6 +3,16 @@
  */
 
 export function parseMarkdown(mdText) {
+  const settingsMatch = mdText.match(/<!--\s*vibe-settings:\s*([\s\S]*?)\s*-->/);
+  let metadata = {};
+  if (settingsMatch) {
+    try {
+      metadata = JSON.parse(settingsMatch[1].trim());
+    } catch (e) {
+      console.error('[Parser] Failed to parse vibe-settings JSON', e);
+    }
+  }
+
   const lines = mdText.split(/\r?\n/);
   const questions = [];
   let currentCategory = 'Общее';
@@ -65,6 +75,7 @@ export function parseMarkdown(mdText) {
     questions.push(finalizeQuestion(currentQuestion));
   }
 
+  questions.metadata = metadata;
   return questions;
 }
 

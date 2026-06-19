@@ -4,8 +4,7 @@
       <!-- Chat Header -->
       <div class="chat-header">
         <div style="display: flex; align-items: center; gap: 0.5rem;">
-          <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0;">💬 Чат с ИИ</h2>
-          <span v-if="activeContextLabel" class="brand-badge" style="font-size: 0.72rem; padding: 0.15rem 0.4rem;">
+          <span v-if="activeContextLabel" class="brand-badge" style="font-size: 0.72rem; padding: 0.15rem 0.4rem; margin: 0;">
             Контекст: {{ activeContextLabel }}
           </span>
         </div>
@@ -21,35 +20,22 @@
             <option value="gemini-2.5-flash">Gemini 2.5 Flash (g4f)</option>
           </select>
 
-          <!-- Web Search Toggle -->
-          <label class="web-search-toggle" title="Поиск в интернете">
-            <input type="checkbox" v-model="webSearchEnabled" />
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="2" y1="12" x2="22" y2="12"></line>
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          <!-- Context Toggle Button -->
+          <button 
+            type="button" 
+            class="btn-action" 
+            style="height: 36px; padding: 0.4rem 0.75rem; font-size: 0.82rem; border: 1px solid var(--border-color); background: rgba(255,255,255,0.02); color: var(--text-main); border-radius: var(--radius-sm); display: flex; align-items: center; gap: 0.35rem; margin: 0; cursor: pointer; transition: var(--transition);"
+            @click="contextExpanded = !contextExpanded"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
             </svg>
-            <span style="font-size: 0.8rem; font-weight: 500;">Веб-поиск</span>
-          </label>
+            <span>Контекст {{ contextExpanded ? '▲' : '▼' }}</span>
+            <span v-if="activeContextLabel" style="color: var(--primary); font-weight: 600;">
+              ({{ activeContextLabel }})
+            </span>
+          </button>
         </div>
-      </div>
-
-      <!-- Context Toggle Button -->
-      <div style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-        <button 
-          type="button" 
-          class="btn-action" 
-          style="padding: 0.25rem 0.6rem; font-size: 0.78rem; border: 1px solid var(--border-color); background: rgba(255,255,255,0.02); color: var(--text-muted); border-radius: var(--radius-sm); display: flex; align-items: center; gap: 0.35rem;"
-          @click="contextExpanded = !contextExpanded"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-          </svg>
-          <span>Параметры контекста {{ contextExpanded ? '▲' : '▼' }}</span>
-          <span v-if="!contextExpanded && activeContextLabel" style="color: var(--primary); font-weight: 600;">
-            ({{ activeContextLabel }})
-          </span>
-        </button>
       </div>
 
       <!-- Context Config Area -->
@@ -128,7 +114,7 @@
           <div style="display: flex; gap: 0.4rem; flex-shrink: 0; height: 48px; align-items: center;">
             <!-- Speech recognition -->
             <button
-              v-if="speechSupported && !generating"
+              v-if="(speechSupported || mediaRecorderSupported) && !generating"
               type="button"
               class="btn-icon voice-input-btn"
               :class="{ 
@@ -156,12 +142,25 @@
 
             <!-- Send button -->
             <button
-              class="btn-primary"
-              style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md);"
+              type="button"
               :disabled="generating || !messageInput.trim()"
               @click="sendMessage"
+              :style="{
+                width: '48px',
+                height: '48px',
+                minWidth: '48px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: (generating || !messageInput.trim()) ? 'rgba(138, 180, 248, 0.15)' : 'var(--primary)',
+                border: 'none',
+                borderRadius: 'var(--radius-md)',
+                cursor: (generating || !messageInput.trim()) ? 'not-allowed' : 'pointer',
+                transition: 'var(--transition)',
+                padding: '0'
+              }"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" :stroke="(generating || !messageInput.trim()) ? '#9e9e9e' : '#121212'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="22" y1="2" x2="11" y2="13"></line>
                 <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
               </svg>
@@ -193,7 +192,6 @@ export default {
     const messageInput = ref('');
     const generating = ref(false);
     const selectedModel = ref(progressStore.aiModel);
-    const webSearchEnabled = ref(false);
 
     // Context states
     const contextType = ref('none');
@@ -201,10 +199,15 @@ export default {
 
     // Voice states
     const speechSupported = ref('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
+    const mediaRecorderSupported = computed(() => 'MediaRecorder' in window);
+    const isOpera = navigator.userAgent.includes('OPR/');
+    const useFallbackSTT = ref(!speechSupported.value || isOpera);
     const isListening = ref(false);
     const speechState = ref('idle'); // 'idle', 'starting', 'listening', 'stopping'
     let recognition = null;
     let startTimeout = null;
+    let mediaRecorder = null;
+    let audioChunks = [];
     const contextExpanded = ref(false);
 
     // Autocomplete states
@@ -221,6 +224,18 @@ export default {
 
     watch(selectedModel, (newVal) => {
       progressStore.setAiModel(newVal);
+    });
+
+    const adjustHeight = () => {
+      const textarea = chatTextarea.value;
+      if (textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+      }
+    };
+
+    watch(messageInput, () => {
+      nextTick(adjustHeight);
     });
 
     // Default select first question if context question is active
@@ -336,8 +351,90 @@ export default {
 
     // Voice dictation
     const toggleVoiceInput = async () => {
-      if (!speechSupported.value) return;
-      
+      // Toggle for MediaRecorder Fallback
+      if (useFallbackSTT.value) {
+        if (speechState.value === 'listening') {
+          if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+            speechState.value = 'stopping';
+          }
+          return;
+        }
+
+        if (speechState.value === 'starting' || speechState.value === 'stopping') return;
+
+        try {
+          console.log('[AudioRecorder] Starting MediaRecorder transcription fallback...');
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaRecorder = new MediaRecorder(stream);
+          audioChunks = [];
+
+          mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+              audioChunks.push(event.data);
+            }
+          };
+
+          mediaRecorder.onstop = async () => {
+            console.log('[AudioRecorder] MediaRecorder stopped. Transcribing...');
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+
+            const reader = new FileReader();
+            reader.readAsDataURL(audioBlob);
+            reader.onloadend = async () => {
+              const base64data = reader.result;
+
+              speechState.value = 'starting';
+              try {
+                const response = await fetch('https://sanchit-gandhi-whisper-large-v3.hf.space/run/predict', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    data: [
+                      {
+                        data: base64data,
+                        name: 'audio.wav'
+                      },
+                      null,
+                      'transcribe'
+                    ]
+                  })
+                });
+
+                if (!response.ok) throw new Error('API transcription failed');
+
+                const resultJson = await response.json();
+                console.log('[AudioRecorder] Transcription result:', resultJson);
+
+                const text = resultJson.data?.[0] || resultJson.data?.[1] || '';
+                if (text) {
+                  messageInput.value = (messageInput.value + ' ' + text).trim();
+                } else {
+                  console.warn('[AudioRecorder] Empty text response.');
+                }
+              } catch (err) {
+                console.error('[AudioRecorder] Whisper space error:', err);
+                showAlert({ message: 'Не удалось распознать аудио. Попробуйте ввести текст вручную.' });
+              } finally {
+                speechState.value = 'idle';
+                isListening.value = false;
+              }
+            };
+          };
+
+          mediaRecorder.start();
+          isListening.value = true;
+          speechState.value = 'listening';
+        } catch (err) {
+          console.error('[AudioRecorder] Failed to start MediaRecorder:', err);
+          showAlert({ message: 'Не удалось получить доступ к микрофону.' });
+          speechState.value = 'idle';
+          isListening.value = false;
+        }
+        return;
+      }
+
+      // Native SpeechRecognition
       if (speechState.value === 'starting' || speechState.value === 'stopping') return;
 
       if (speechState.value === 'listening') {
@@ -353,8 +450,27 @@ export default {
 
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       try {
+        console.log('[SpeechRecognition][Chat] Initializing native session...');
+        console.log('[SpeechRecognition][Chat] Browser UserAgent:', navigator.userAgent);
+        console.log('[SpeechRecognition][Chat] WebSpeech API check:', 'webkitSpeechRecognition' in window ? 'webkit' : 'standard/no');
+
+        if (navigator.permissions && navigator.permissions.query) {
+          navigator.permissions.query({ name: 'microphone' })
+            .then((permissionStatus) => {
+              console.log('[SpeechRecognition][Chat] Microphone permission state:', permissionStatus.state);
+            })
+            .catch(err => {
+              console.warn('[SpeechRecognition][Chat] Microphone permission query failed:', err);
+            });
+        }
+
         if (recognition) {
-          try { recognition.abort(); } catch(e) {}
+          try {
+            console.log('[SpeechRecognition][Chat] Aborting previous active session...');
+            recognition.abort();
+          } catch(e) {
+            console.warn('[SpeechRecognition][Chat] Abort error:', e);
+          }
         }
         
         recognition = new SpeechRecognition();
@@ -363,18 +479,21 @@ export default {
         recognition.interimResults = false;
 
         recognition.onstart = () => {
+          console.log('[SpeechRecognition][Chat] onstart event triggered');
           speechState.value = 'listening';
           isListening.value = true;
           if (startTimeout) clearTimeout(startTimeout);
         };
 
         recognition.onresult = (event) => {
+          console.log('[SpeechRecognition][Chat] onresult event triggered');
           const resultText = event.results[0][0].transcript;
+          console.log('[SpeechRecognition][Chat] Result transcript:', resultText);
           messageInput.value = (messageInput.value + ' ' + resultText).trim();
         };
 
         recognition.onerror = (event) => {
-          console.error('Speech recognition error', event);
+          console.error('[SpeechRecognition][Chat] onerror event triggered:', event.error, event);
           speechState.value = 'idle';
           isListening.value = false;
           if (startTimeout) clearTimeout(startTimeout);
@@ -382,29 +501,43 @@ export default {
             showAlert({
               message: 'Доступ к микрофону заблокирован. Пожалуйста, разрешите доступ к микрофону в настройках браузера для использования голосового ввода.'
             });
+          } else {
+            showAlert({
+              message: `Ошибка распознавания речи: ${event.error}. Проверьте подключение микрофона.`
+            });
           }
         };
 
         recognition.onend = () => {
+          console.log('[SpeechRecognition][Chat] onend event triggered');
           speechState.value = 'idle';
           isListening.value = false;
           if (startTimeout) clearTimeout(startTimeout);
         };
+
+        // Add additional lifecycle hooks for trace
+        recognition.onaudiostart = () => console.log('[SpeechRecognition][Chat] onaudiostart event');
+        recognition.onsoundstart = () => console.log('[SpeechRecognition][Chat] onsoundstart event');
+        recognition.onspeechstart = () => console.log('[SpeechRecognition][Chat] onspeechstart event');
+        recognition.onspeechend = () => console.log('[SpeechRecognition][Chat] onspeechend event');
+        recognition.onsoundend = () => console.log('[SpeechRecognition][Chat] onsoundend event');
+        recognition.onaudioend = () => console.log('[SpeechRecognition][Chat] onaudioend event');
 
         speechState.value = 'starting';
         
         if (startTimeout) clearTimeout(startTimeout);
         startTimeout = setTimeout(() => {
           if (speechState.value === 'starting') {
-            console.warn('SpeechRecognition start timeout');
+            console.warn('[SpeechRecognition][Chat] Start timeout hit after 5s. State remained starting.');
             speechState.value = 'idle';
             try { recognition.abort(); } catch(e) {}
           }
         }, 5000);
 
+        console.log('[SpeechRecognition][Chat] Calling recognition.start()');
         recognition.start();
       } catch (e) {
-        console.warn('SpeechRecognition start error:', e);
+        console.warn('[SpeechRecognition][Chat] start error:', e);
         speechState.value = 'idle';
       }
     };
@@ -480,7 +613,7 @@ export default {
       try {
         const stream = await chatStream(chatMessages, {
           model: selectedModel.value,
-          webSearch: webSearchEnabled.value
+          webSearch: false
         });
 
         // Loop over stream chunks
@@ -511,12 +644,12 @@ export default {
       messageInput,
       generating,
       selectedModel,
-      webSearchEnabled,
       contextType,
       selectedContextQuestionId,
       activeContextLabel,
       contextExpanded,
       speechSupported,
+      mediaRecorderSupported,
       isListening,
       speechState,
       showSuggestions,
@@ -540,15 +673,10 @@ export default {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  height: calc(100vh - 110px);
+  height: calc(100vh - 75px);
   padding: 1.25rem;
   margin-bottom: 0;
-  min-height: 480px;
-}
-
-.app-container {
-  padding: 0 !important;
-  padding-bottom: 0 !important;
+  min-height: 520px;
 }
 
 @media (max-height: 600px) {

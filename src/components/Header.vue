@@ -432,7 +432,7 @@ header {
   background: var(--primary-dark);
 }
 
-@media (max-width: 576px) {
+@media (max-width: 700px) {
   #btn-menu-toggle {
     display: flex;
     z-index: 110;

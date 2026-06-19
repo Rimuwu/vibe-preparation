@@ -64,58 +64,101 @@
 
       <div style="height: 1px; background: var(--border-color); margin: 1.25rem 0;" v-if="selectedModuleId"></div>
 
+      <!-- Generation Mode Radio Toggles -->
+      <div style="display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1rem;" v-if="selectedModuleId">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label style="display: block; margin-bottom: 0.4rem; font-size: 0.85rem; color: var(--text-muted);">
+            Режим генерации вопросов
+          </label>
+          <div style="display: flex; gap: 1.25rem; align-items: center; height: 38px;">
+            <label style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; cursor: pointer; color: var(--text-main); font-weight: 500;">
+              <input type="radio" name="generation-mode" v-model="generationMode" value="by_topic" style="accent-color: var(--primary);" />
+              По темам
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; cursor: pointer; color: var(--text-main); font-weight: 500;">
+              <input type="radio" name="generation-mode" v-model="generationMode" value="random" style="accent-color: var(--primary);" />
+              Случайный набор
+            </label>
+          </div>
+        </div>
+      </div>
+
       <!-- Category partition count inputs -->
       <div v-if="selectedModuleId">
-        <h3
-          style="font-size: 0.95rem; font-weight: 600; color: var(--text-muted); margin: 0 0 1rem 0; text-transform: uppercase; letter-spacing: 0.05em;"
-        >
-          Правила выбора вопросов по темам
-        </h3>
-
-        <!-- Rules container -->
-        <div id="ticket-rules-container" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.25rem;">
-          <div
-            v-for="rule in rules"
-            :key="rule.category"
-            class="ticket-rule-row"
+        <!-- Topic Selection Rules Mode -->
+        <div v-if="generationMode === 'by_topic'">
+          <h3
+            style="font-size: 0.95rem; font-weight: 600; color: var(--text-muted); margin: 0 0 1rem 0; text-transform: uppercase; letter-spacing: 0.05em;"
           >
-            <div class="ticket-rule-info">
-              <div class="ticket-rule-title">{{ rule.category }}</div>
-              <div class="ticket-rule-badge">Доступно вопросов: {{ rule.availableCount }}</div>
-            </div>
-            
-            <div class="ticket-rule-controls">
-              <div class="ticket-rule-control-group">
-                <span class="ticket-rule-control-label">Вопросов:</span>
-                <input
-                  type="number"
-                  class="select-control ticket-cat-count"
-                  min="0"
-                  :max="rule.availableCount"
-                  style="width: 80px; padding: 0.4rem; font-size: 0.85rem; height: 34px; text-align: center; border-radius: var(--radius-sm);"
-                  v-model.number="rule.count"
-                />
+            Правила выбора вопросов по темам
+          </h3>
+
+          <!-- Rules container -->
+          <div id="ticket-rules-container" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.25rem;">
+            <div
+              v-for="rule in rules"
+              :key="rule.category"
+              class="ticket-rule-row"
+            >
+              <div class="ticket-rule-info">
+                <div class="ticket-rule-title">{{ rule.category }}</div>
+                <div class="ticket-rule-badge">Доступно вопросов: {{ rule.availableCount }}</div>
               </div>
               
-              <div class="ticket-rule-control-group">
-                <span class="ticket-rule-control-label">Логика:</span>
-                <select
-                  class="select-control ticket-cat-logic"
-                  style="width: 140px; padding: 0.4rem; font-size: 0.85rem; height: 34px; border-radius: var(--radius-sm);"
-                  v-model="rule.logic"
-                >
-                  <option value="sequential">По порядку</option>
-                  <option value="random">Случайно</option>
-                </select>
+              <div class="ticket-rule-controls">
+                <div class="ticket-rule-control-group">
+                  <span class="ticket-rule-control-label">Вопросов:</span>
+                  <input
+                    type="number"
+                    class="select-control ticket-cat-count"
+                    min="0"
+                    :max="rule.availableCount"
+                    style="width: 80px; padding: 0.4rem; font-size: 0.85rem; height: 34px; text-align: center; border-radius: var(--radius-sm);"
+                    v-model.number="rule.count"
+                  />
+                </div>
+                
+                <div class="ticket-rule-control-group">
+                  <span class="ticket-rule-control-label">Логика:</span>
+                  <select
+                    class="select-control ticket-cat-logic"
+                    style="width: 140px; padding: 0.4rem; font-size: 0.85rem; height: 34px; border-radius: var(--radius-sm);"
+                    v-model="rule.logic"
+                  >
+                    <option value="sequential">По порядку</option>
+                    <option value="random">Случайно</option>
+                  </select>
+                </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Random Mode Questions Count Question -->
+        <div v-else-if="generationMode === 'random'" class="form-group" style="margin-bottom: 1.25rem; background: rgba(255, 255, 255, 0.015); border: 1px solid var(--border-color); padding: 1.25rem; border-radius: var(--radius-md);">
+          <label for="ticket-questions-count" style="display: block; margin-bottom: 0.6rem; font-size: 0.95rem; font-weight: 600; color: var(--text-main);">
+            Сколько вопросов должно быть в одном билете?
+          </label>
+          <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            <input
+              type="number"
+              id="ticket-questions-count"
+              class="select-control"
+              min="1"
+              :max="moduleQuestions.length"
+              style="width: 120px; padding: 0.5rem 0.75rem; font-size: 1rem; height: 40px; text-align: center; border-radius: var(--radius-sm);"
+              v-model.number="questionsPerTicket"
+            />
+            <span style="font-size: 0.85rem; color: var(--text-muted);">
+              Доступно всего вопросов: {{ moduleQuestions.length }}
+            </span>
           </div>
         </div>
 
         <button
           id="btn-generate-tickets"
           class="btn-primary"
-          style="width: 100%; padding: 0.75rem 1.5rem; font-size: 0.9rem; border-radius: var(--radius-sm); font-weight: 600;"
+          style="width: 100%; padding: 0.75rem 1.5rem; font-size: 0.9rem; border-radius: var(--radius-sm); font-weight: 600; margin-top: 1rem;"
           @click="generateTickets"
         >
           Сгенерировать билеты
@@ -210,6 +253,8 @@ export default {
     const rules = ref([]);
     const generatedTickets = ref([]);
     const moduleQuestions = ref([]);
+    const generationMode = ref('by_topic');
+    const questionsPerTicket = ref(5);
 
     onMounted(async () => {
       if (modulesStore.modules.length > 0) {
@@ -250,6 +295,16 @@ export default {
           try {
             savedRules = JSON.parse(savedRulesRaw);
           } catch (e) {}
+        }
+
+        const savedGenMode = localStorage.getItem(`vibe_prep_ticket_gen_mode_${modId}`);
+        generationMode.value = savedGenMode || 'by_topic';
+
+        const savedCount = localStorage.getItem(`vibe_prep_ticket_qcount_${modId}`);
+        if (savedCount) {
+          questionsPerTicket.value = parseInt(savedCount, 10);
+        } else {
+          questionsPerTicket.value = Math.min(5, moduleQuestions.value.length);
         }
 
         // Initialize rules reactivity array
@@ -309,6 +364,42 @@ export default {
       const numTickets = ticketTotalCount.value;
       if (isNaN(numTickets) || numTickets < 1) {
         showAlert({ message: 'Укажите корректное количество билетов (минимум 1).' });
+        return;
+      }
+
+      // Check random mode
+      if (generationMode.value === 'random') {
+        const qCount = questionsPerTicket.value;
+        if (isNaN(qCount) || qCount < 1 || qCount > moduleQuestions.value.length) {
+          showAlert({ message: `Укажите корректное количество вопросов в билете (от 1 до ${moduleQuestions.value.length}).` });
+          return;
+        }
+
+        const tickets = [];
+        for (let t = 1; t <= numTickets; t++) {
+          const ticketQuestionIds = [];
+          const shuffled = [...moduleQuestions.value];
+          shuffleArray(shuffled);
+          for (let j = 0; j < qCount; j++) {
+            ticketQuestionIds.push(shuffled[j].id);
+          }
+          tickets.push({
+            ticketId: t,
+            name: `Билет ${t}`,
+            questionIds: ticketQuestionIds
+          });
+        }
+
+        // Save to localStorage
+        localStorage.setItem(`vibe_prep_generated_tickets_${modId}`, JSON.stringify(tickets));
+        localStorage.setItem(`vibe_prep_ticket_gen_mode_${modId}`, 'random');
+        localStorage.setItem(`vibe_prep_ticket_qcount_${modId}`, qCount.toString());
+        
+        // Reset ticket progress stats on regeneration
+        localStorage.removeItem(`vibe_prep_ticket_stats_${modId}`);
+
+        generatedTickets.value = tickets;
+        progressStore.touchSyncTimestamp();
         return;
       }
 
@@ -378,8 +469,12 @@ export default {
 
       // Save to localStorage
       localStorage.setItem(`vibe_prep_generated_tickets_${modId}`, JSON.stringify(tickets));
+      localStorage.setItem(`vibe_prep_ticket_gen_mode_${modId}`, 'by_topic');
       const rulesToSave = rules.value.map(r => ({ category: r.category, count: r.count, logic: r.logic }));
       localStorage.setItem(`vibe_prep_ticket_rules_${modId}`, JSON.stringify(rulesToSave));
+      
+      // Reset ticket progress stats on regeneration
+      localStorage.removeItem(`vibe_prep_ticket_stats_${modId}`);
 
       generatedTickets.value = tickets;
       progressStore.touchSyncTimestamp();
@@ -511,6 +606,9 @@ export default {
       solveMode,
       rules,
       generatedTickets,
+      moduleQuestions,
+      generationMode,
+      questionsPerTicket,
       onModuleChange,
       saveSolveMode,
       generateTickets,
@@ -593,15 +691,14 @@ export default {
 }
 
 .ticket-card-qitem {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--text-main);
+  opacity: 0.95;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  opacity: 0.8;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
+  padding: 0.15rem 0;
+  display: block;
 }
 
 .ticket-card-qitem::before {

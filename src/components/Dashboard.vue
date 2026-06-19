@@ -8,7 +8,7 @@
           <span class="brand-badge" style="margin-bottom: 0.5rem; display: inline-block;">Тема</span>
           <h2
             id="current-module-title"
-            style="font-size: 1.2rem; font-weight: 700; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+            style="font-size: 1.2rem; font-weight: 700; color: #ffffff; word-break: break-word;"
           >
             {{ modulesStore.activeModule.name }}
           </h2>
@@ -497,9 +497,8 @@ export default {
   font-size: 0.85rem;
   font-weight: 600;
   color: #ffffff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
+  line-height: 1.3;
 }
 
 .radio-card-desc {

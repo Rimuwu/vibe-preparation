@@ -74,12 +74,66 @@ export const useModulesStore = defineStore('modules', {
 
         // Extract categories
         this.categories = Array.from(new Set(this.questions.map(q => q.category || 'Общее')));
+
+        // Check auto-generation of tickets if set
+        if (mod.settings && mod.settings.autoTickets) {
+          const ticketsKey = `vibe_prep_generated_tickets_${mod.id}`;
+          if (!localStorage.getItem(ticketsKey)) {
+            console.log('[AutoTickets] Auto settings detected. Automatically generating tickets...');
+            this.autoGenerateTickets(mod, this.questions, this.categories);
+          }
+        }
       } catch (err) {
         console.error('Failed to select module', err);
         throw err;
       } finally {
         this.loading = false;
       }
+    },
+
+    autoGenerateTickets(mod, questions, categories) {
+      const ticketsKey = `vibe_prep_generated_tickets_${mod.id}`;
+      const rulesKey = `vibe_prep_ticket_rules_${mod.id}`;
+      
+      const numTickets = 20; // Default count
+      const rules = categories.map(cat => ({
+        category: cat,
+        count: 1,
+        logic: 'random'
+      }));
+      
+      const parsedRules = rules.map(rule => {
+        const catQuestions = questions.filter(q => q.category === rule.category);
+        return {
+          category: rule.category,
+          count: 1,
+          logic: 'random',
+          questions: [...catQuestions]
+        };
+      });
+
+      const tickets = [];
+      for (let t = 1; t <= numTickets; t++) {
+        const ticketQuestionIds = [];
+        for (const r of parsedRules) {
+          if (r.questions.length === 0) continue;
+          const shuffled = [...r.questions];
+          for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          }
+          ticketQuestionIds.push(shuffled[0].id);
+        }
+        tickets.push({
+          ticketId: t,
+          name: `Билет ${t}`,
+          questionIds: ticketQuestionIds
+        });
+      }
+
+      localStorage.setItem(ticketsKey, JSON.stringify(tickets));
+      localStorage.setItem(rulesKey, JSON.stringify(rules));
+      console.log(`[AutoTickets] Successfully auto-generated ${numTickets} tickets for module ${mod.id}`);
     },
 
     async loadQuestionsForModule(mod, nocache = false) {
@@ -97,6 +151,9 @@ export const useModulesStore = defineStore('modules', {
       }
 
       const parsedQuestions = parseMarkdown(mdText);
+      if (parsedQuestions.metadata) {
+        mod.settings = parsedQuestions.metadata;
+      }
 
       // Post-process questions: namespace IDs and apply overrides
       parsedQuestions.forEach(q => {
@@ -291,7 +348,12 @@ export const useModulesStore = defineStore('modules', {
     },
 
     serializeQuestionsToMarkdown(questions, moduleName) {
-      let md = `# ${moduleName.toUpperCase()}\n\n`;
+      let md = '';
+      const mod = this.modules.find(m => m.name === moduleName);
+      if (mod && mod.settings) {
+        md += `<!-- vibe-settings: ${JSON.stringify(mod.settings, null, 2)} -->\n\n`;
+      }
+      md += `# ${moduleName.toUpperCase()}\n\n`;
 
       const categories = {};
       questions.forEach(q => {
@@ -388,6 +450,9 @@ export const useModulesStore = defineStore('modules', {
               mdText: mdText,
               isCustom: true
             };
+            if (parsed.metadata) {
+              newMod.settings = parsed.metadata;
+            }
 
             const customRaw = localStorage.getItem(CUSTOM_MODS_KEY);
             const list = customRaw ? JSON.parse(customRaw) : [];

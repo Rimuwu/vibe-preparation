@@ -155,7 +155,7 @@
               style="flex-grow: 1; resize: vertical; min-height: 60px;"
             ></textarea>
             <button
-              v-if="speechSupported && !textChecked"
+              v-if="(speechSupported || mediaRecorderSupported) && !textChecked"
               type="button"
               class="btn-icon voice-input-btn"
               :class="{ 
@@ -214,7 +214,7 @@
               style="flex-grow: 1; resize: vertical; min-height: 60px;"
             ></textarea>
             <button
-              v-if="speechSupported"
+              v-if="speechSupported || mediaRecorderSupported"
               type="button"
               class="btn-icon voice-input-btn"
               :class="{ 
@@ -419,6 +419,9 @@ export default {
 
     // Voice & AI Verification states
     const speechSupported = ref('webkitSpeechRecognition' in window || 'SpeechRecognition' in window);
+    const mediaRecorderSupported = computed(() => 'MediaRecorder' in window);
+    const isOpera = navigator.userAgent.includes('OPR/');
+    const useFallbackSTT = ref(!speechSupported.value || isOpera);
     const isListening = ref(false);
     const speechState = ref('idle'); // 'idle', 'starting', 'listening', 'stopping'
     const listeningTarget = ref('');
@@ -427,6 +430,8 @@ export default {
     const explainingSimpler = ref(false);
     let recognition = null;
     let startTimeout = null;
+    let mediaRecorder = null;
+    let audioChunks = [];
 
     const currentIndex = computed(() => progressStore.currentIndex);
     const total = computed(() => progressStore.sessionQueue.length);
@@ -919,8 +924,97 @@ export default {
     }
 
     async function toggleVoiceInput(targetField) {
-      if (!speechSupported.value) return;
-      
+      // Toggle for MediaRecorder Fallback
+      if (useFallbackSTT.value) {
+        if (speechState.value === 'listening') {
+          if (listeningTarget.value === targetField) {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+              mediaRecorder.stop();
+              speechState.value = 'stopping';
+            }
+          }
+          return;
+        }
+
+        if (speechState.value === 'starting' || speechState.value === 'stopping') return;
+
+        try {
+          console.log('[AudioRecorder] Starting MediaRecorder transcription fallback in StudyArea for target:', targetField);
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaRecorder = new MediaRecorder(stream);
+          audioChunks = [];
+
+          mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+              audioChunks.push(event.data);
+            }
+          };
+
+          mediaRecorder.onstop = async () => {
+            console.log('[AudioRecorder] MediaRecorder stopped. Transcribing...');
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+
+            const reader = new FileReader();
+            reader.readAsDataURL(audioBlob);
+            reader.onloadend = async () => {
+              const base64data = reader.result;
+
+              speechState.value = 'starting';
+              try {
+                const response = await fetch('https://sanchit-gandhi-whisper-large-v3.hf.space/run/predict', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    data: [
+                      {
+                        data: base64data,
+                        name: 'audio.wav'
+                      },
+                      null,
+                      'transcribe'
+                    ]
+                  })
+                });
+
+                if (!response.ok) throw new Error('API transcription failed');
+
+                const resultJson = await response.json();
+                console.log('[AudioRecorder] Transcription result:', resultJson);
+
+                const text = resultJson.data?.[0] || resultJson.data?.[1] || '';
+                if (text) {
+                  if (listeningTarget.value === 'typedAnswer') {
+                    typedAnswer.value = (typedAnswer.value + ' ' + text).trim();
+                  } else if (listeningTarget.value === 'freeNote') {
+                    freeNote.value = (freeNote.value + ' ' + text).trim();
+                  }
+                } else {
+                  console.warn('[AudioRecorder] Empty text response.');
+                }
+              } catch (err) {
+                console.error('[AudioRecorder] Whisper space error:', err);
+                showAlert({ message: 'Не удалось распознать аудио. Попробуйте ввести текст вручную.' });
+              } finally {
+                speechState.value = 'idle';
+                isListening.value = false;
+              }
+            };
+          };
+
+          listeningTarget.value = targetField;
+          mediaRecorder.start();
+          isListening.value = true;
+          speechState.value = 'listening';
+        } catch (err) {
+          console.error('[AudioRecorder] Failed to start MediaRecorder:', err);
+          showAlert({ message: 'Не удалось получить доступ к микрофону.' });
+          speechState.value = 'idle';
+          isListening.value = false;
+        }
+        return;
+      }
+
+      // Native SpeechRecognition below...
       if (speechState.value === 'starting' || speechState.value === 'stopping') return;
 
       if (speechState.value === 'listening') {
@@ -954,8 +1048,29 @@ export default {
     function startSpeechSession(targetField) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       try {
+        console.log('[SpeechRecognition] Initializing session. Target:', targetField);
+        console.log('[SpeechRecognition] Browser UserAgent:', navigator.userAgent);
+        console.log('[SpeechRecognition] WebSpeech API check:', 'webkitSpeechRecognition' in window ? 'webkit' : 'standard/no');
+
+        if (navigator.permissions && navigator.permissions.query) {
+          navigator.permissions.query({ name: 'microphone' })
+            .then((permissionStatus) => {
+              console.log('[SpeechRecognition] Microphone permission state:', permissionStatus.state);
+            })
+            .catch(err => {
+              console.warn('[SpeechRecognition] Microphone permission query failed:', err);
+            });
+        } else {
+          console.log('[SpeechRecognition] navigator.permissions.query not supported in this browser.');
+        }
+
         if (recognition) {
-          try { recognition.abort(); } catch(e) {}
+          try {
+            console.log('[SpeechRecognition] Aborting previous active session...');
+            recognition.abort();
+          } catch(e) {
+            console.warn('[SpeechRecognition] Abort error:', e);
+          }
         }
         
         recognition = new SpeechRecognition();
@@ -964,13 +1079,16 @@ export default {
         recognition.interimResults = false;
 
         recognition.onstart = () => {
+          console.log('[SpeechRecognition] onstart event triggered');
           speechState.value = 'listening';
           isListening.value = true;
           if (startTimeout) clearTimeout(startTimeout);
         };
 
         recognition.onresult = (event) => {
+          console.log('[SpeechRecognition] onresult event triggered');
           const resultText = event.results[0][0].transcript;
+          console.log('[SpeechRecognition] Result transcript:', resultText);
           if (listeningTarget.value === 'typedAnswer') {
             typedAnswer.value = (typedAnswer.value + ' ' + resultText).trim();
           } else if (listeningTarget.value === 'freeNote') {
@@ -979,7 +1097,7 @@ export default {
         };
 
         recognition.onerror = (event) => {
-          console.error('Speech recognition error', event);
+          console.error('[SpeechRecognition] onerror event triggered:', event.error, event);
           speechState.value = 'idle';
           isListening.value = false;
           if (startTimeout) clearTimeout(startTimeout);
@@ -987,14 +1105,27 @@ export default {
             showAlert({
               message: 'Доступ к микрофону заблокирован. Пожалуйста, разрешите доступ к микрофону в настройках браузера для использования голосового ввода.'
             });
+          } else {
+            showAlert({
+              message: `Ошибка распознавания речи: ${event.error}. Проверьте подключение микрофона.`
+            });
           }
         };
 
         recognition.onend = () => {
+          console.log('[SpeechRecognition] onend event triggered');
           speechState.value = 'idle';
           isListening.value = false;
           if (startTimeout) clearTimeout(startTimeout);
         };
+
+        // Add additional lifecycle hooks for trace
+        recognition.onaudiostart = () => console.log('[SpeechRecognition] onaudiostart event');
+        recognition.onsoundstart = () => console.log('[SpeechRecognition] onsoundstart event');
+        recognition.onspeechstart = () => console.log('[SpeechRecognition] onspeechstart event');
+        recognition.onspeechend = () => console.log('[SpeechRecognition] onspeechend event');
+        recognition.onsoundend = () => console.log('[SpeechRecognition] onsoundend event');
+        recognition.onaudioend = () => console.log('[SpeechRecognition] onaudioend event');
 
         listeningTarget.value = targetField;
         speechState.value = 'starting';
@@ -1002,15 +1133,16 @@ export default {
         if (startTimeout) clearTimeout(startTimeout);
         startTimeout = setTimeout(() => {
           if (speechState.value === 'starting') {
-            console.warn('SpeechRecognition start timeout');
+            console.warn('[SpeechRecognition] Start timeout hit after 5s. State remained starting.');
             speechState.value = 'idle';
             try { recognition.abort(); } catch(e) {}
           }
         }, 5000);
 
+        console.log('[SpeechRecognition] Calling recognition.start()');
         recognition.start();
       } catch (e) {
-        console.warn('SpeechRecognition start error:', e);
+        console.warn('[SpeechRecognition] start error:', e);
         speechState.value = 'idle';
       }
     }
@@ -1188,6 +1320,7 @@ export default {
       exitSession,
       editQuestion,
       speechSupported,
+      mediaRecorderSupported,
       isListening,
       speechState,
       listeningTarget,
