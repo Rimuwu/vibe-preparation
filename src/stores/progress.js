@@ -21,7 +21,7 @@ export const useProgressStore = defineStore('progress', {
     activityLog: {},
     viewingProfileData: null,
     viewingProfileNickname: '',
-    
+
     // Study session state
     sessionQueue: [],
     currentIndex: 0,
@@ -30,16 +30,16 @@ export const useProgressStore = defineStore('progress', {
     sessionAnswers: [],
     activeTicketId: null,
     activeModuleId: localStorage.getItem('vibe_prep_active_module_id') || null,
-    
+
     // UI Navigation
     currentScreen: 'modules',
-    
+
     // API State
     apiUrl: '',
     isSyncing: false,
     syncError: false,
   }),
-  
+
   actions: {
     async init() {
       this.loadStats();
@@ -48,7 +48,7 @@ export const useProgressStore = defineStore('progress', {
       await this.resolveApiUrl(); // Must resolve before any API calls
       this.restoreActiveSession();
     },
-    
+
     // API Resolution
     async resolveApiUrl() {
       const hostname = window.location.hostname;
@@ -76,7 +76,7 @@ export const useProgressStore = defineStore('progress', {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         const parsed = raw ? JSON.parse(raw) : {};
-        
+
         let migrated = false;
         for (const key in parsed) {
           if (/^q_\d+_\d+$/.test(key)) {
@@ -98,7 +98,7 @@ export const useProgressStore = defineStore('progress', {
             migrated = true;
           }
         }
-        
+
         this.stats = parsed;
         if (migrated) {
           this.saveStats();
@@ -116,7 +116,7 @@ export const useProgressStore = defineStore('progress', {
         this.activityLog = {};
       }
     },
-    
+
     saveStats() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(this.stats));
@@ -126,7 +126,7 @@ export const useProgressStore = defineStore('progress', {
         console.error('Failed to save stats', e);
       }
     },
-    
+
     getQuestionStats(qId) {
       if (!this.stats[qId]) {
         this.stats[qId] = {
@@ -137,7 +137,7 @@ export const useProgressStore = defineStore('progress', {
       }
       return this.stats[qId];
     },
-    
+
     recordAnswer(qId, isCorrect, mode) {
       const qStat = this.getQuestionStats(qId);
       if (isCorrect) {
@@ -197,7 +197,7 @@ export const useProgressStore = defineStore('progress', {
       this.saveStats();
       return qStat;
     },
-    
+
     toggleDifficult(qId, defaultDifficult = false) {
       const qStat = this.getQuestionStats(qId);
       const currentVal = qStat.isDifficult !== undefined ? qStat.isDifficult : defaultDifficult;
@@ -205,13 +205,13 @@ export const useProgressStore = defineStore('progress', {
       this.saveStats();
       return qStat.isDifficult;
     },
-    
+
     setDifficult(qId, isDiff) {
       const qStat = this.getQuestionStats(qId);
       qStat.isDifficult = isDiff;
       this.saveStats();
     },
-    
+
     addAcceptedAnswer(qId, answer) {
       const qStat = this.getQuestionStats(qId);
       const cleanAns = answer.trim().toLowerCase();
@@ -223,7 +223,7 @@ export const useProgressStore = defineStore('progress', {
         this.saveStats();
       }
     },
-    
+
     resetAllStats() {
       this.stats = {};
       this.activityLog = {};
@@ -231,7 +231,7 @@ export const useProgressStore = defineStore('progress', {
       localStorage.setItem('vibe_prep_activity_log', JSON.stringify({}));
       this.touchSyncTimestamp();
     },
-    
+
     getGlobalStats(questions = []) {
       const targetStats = this.viewingProfileData ? (this.viewingProfileData.stats || {}) : this.stats;
       let totalCorrect = 0;
@@ -243,12 +243,12 @@ export const useProgressStore = defineStore('progress', {
         const qStat = targetStats[q.id] || {};
         totalCorrect += qStat.correctCount || 0;
         totalIncorrect += qStat.incorrectCount || 0;
-        
+
         const isDiff = qStat.isDifficult !== undefined ? qStat.isDifficult : (q.isStarred || false);
         if (isDiff) {
           totalDifficult++;
         }
-        
+
         if ((qStat.correctCount || 0) + (qStat.incorrectCount || 0) > 0) {
           answeredCount++;
         }
@@ -278,7 +278,7 @@ export const useProgressStore = defineStore('progress', {
         const incorrect = qStat.testIncorrectCount || 0;
         totalCorrect += correct;
         totalIncorrect += incorrect;
-        
+
         if (correct + incorrect > 0) {
           answeredCount++;
         }
@@ -318,7 +318,7 @@ export const useProgressStore = defineStore('progress', {
         }
       }
     },
-    
+
     saveActiveSession(settings = {}) {
       if (!this.activeModuleId) return;
       const sessionState = {
@@ -333,7 +333,7 @@ export const useProgressStore = defineStore('progress', {
       };
       localStorage.setItem(SESSION_KEY, JSON.stringify(sessionState));
     },
-    
+
     clearActiveSession() {
       this.sessionQueue = [];
       this.currentIndex = 0;
@@ -343,7 +343,7 @@ export const useProgressStore = defineStore('progress', {
       this.activeTicketId = null;
       localStorage.removeItem(SESSION_KEY);
     },
-    
+
     startStudySession(queue, ticketId = null, settings = {}) {
       this.sessionQueue = queue;
       this.currentIndex = 0;
@@ -354,7 +354,7 @@ export const useProgressStore = defineStore('progress', {
       this.currentScreen = 'study';
       this.saveActiveSession(settings);
     },
-    
+
     setActiveModuleId(modId) {
       this.activeModuleId = modId;
       localStorage.setItem('vibe_prep_active_module_id', modId);
@@ -370,7 +370,7 @@ export const useProgressStore = defineStore('progress', {
         this.customLists = [];
       }
     },
-    
+
     saveCustomLists() {
       try {
         localStorage.setItem(CUSTOM_LISTS_KEY, JSON.stringify(this.customLists));
@@ -379,7 +379,7 @@ export const useProgressStore = defineStore('progress', {
         console.error('Failed to save custom lists', e);
       }
     },
-    
+
     createCustomList(name, moduleId, moduleName, questionIds) {
       const newList = {
         id: 'list_' + Date.now(),
@@ -393,7 +393,7 @@ export const useProgressStore = defineStore('progress', {
       this.saveCustomLists();
       return newList;
     },
-    
+
     deleteCustomList(listId) {
       this.customLists = this.customLists.filter(l => l.id !== listId);
       this.saveCustomLists();
@@ -409,7 +409,7 @@ export const useProgressStore = defineStore('progress', {
       this.deviceId = dId;
       return dId;
     },
-    
+
     touchSyncTimestamp() {
       if (this.syncCode) {
         const timestamp = Date.now().toString();
@@ -417,19 +417,19 @@ export const useProgressStore = defineStore('progress', {
         this.syncTimestamp = timestamp;
       }
     },
-    
+
     saveNickname(name) {
       this.nickname = name;
       localStorage.setItem(NICKNAME_KEY, name);
     },
-    
+
     saveSyncDetails(code, timestamp) {
       this.syncCode = code;
       this.syncTimestamp = timestamp.toString();
       localStorage.setItem(SYNC_CODE_KEY, code);
       localStorage.setItem(SYNC_TIME_KEY, timestamp.toString());
     },
-    
+
     disconnectSync() {
       this.syncCode = '';
       this.syncTimestamp = '';
@@ -450,24 +450,24 @@ export const useProgressStore = defineStore('progress', {
       const ticketKeys = {};
       const ruleKeys = {};
       const ticketStatsKeys = {};
-      
+
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key.startsWith('vibe_prep_generated_tickets_')) {
           const modId = key.substring('vibe_prep_generated_tickets_'.length);
           try {
             ticketKeys[modId] = JSON.parse(localStorage.getItem(key));
-          } catch (e) {}
+          } catch (e) { }
         } else if (key.startsWith('vibe_prep_ticket_rules_')) {
           const modId = key.substring('vibe_prep_ticket_rules_'.length);
           try {
             ruleKeys[modId] = JSON.parse(localStorage.getItem(key));
-          } catch (e) {}
+          } catch (e) { }
         } else if (key.startsWith('vibe_prep_ticket_stats_')) {
           const modId = key.substring('vibe_prep_ticket_stats_'.length);
           try {
             ticketStatsKeys[modId] = JSON.parse(localStorage.getItem(key));
-          } catch (e) {}
+          } catch (e) { }
         }
       }
       const ticketSolveModeVal = localStorage.getItem('vibe_prep_ticket_solve_mode') || 'free';
@@ -653,9 +653,9 @@ export const useProgressStore = defineStore('progress', {
 
     async submitLeaderboardStats(nickname, standardModules) {
       if (standardModules.length === 0) return { success: true };
-      
+
       let syncCode = this.syncCode;
-      
+
       // Auto generate sync code if empty
       if (!syncCode) {
         try {
@@ -684,7 +684,7 @@ export const useProgressStore = defineStore('progress', {
               accuracy: modStats.accuracy
             })
           });
-          
+
           if (!res.ok) {
             const errData = await res.json().catch(() => ({}));
             errors.push(`${mod.name}: ${errData.detail || 'Неизвестная ошибка сервера'}`);
@@ -693,7 +693,7 @@ export const useProgressStore = defineStore('progress', {
           errors.push(`${mod.name}: Нет соединения с сервером`);
         }
       }
-      
+
       if (errors.length > 0) {
         return { success: false, error: errors.join('\n') };
       }
@@ -763,7 +763,7 @@ export const useProgressStore = defineStore('progress', {
         const res = await fetch(`${this.apiUrl}/api/public-stats/${entryId}`);
         if (!res.ok) throw new Error('Не удалось загрузить данные профиля.');
         const result = await res.json();
-        
+
         // Save the user progress payload
         this.viewingProfileData = result.data;
         this.viewingProfileNickname = result.nickname || nickname;
