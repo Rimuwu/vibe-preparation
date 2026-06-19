@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from pymongo import MongoClient
 from dotenv import load_dotenv
@@ -33,6 +34,11 @@ app.add_middleware(
 MONGODB_URI = os.getenv(
     "MONGODB_URI",
     "NOCODE"
+)
+
+REDIRECT_TO = os.getenv(
+    "REDIRECT_TO",
+    "https://rimuwu.github.io/vibe-preparation"
 )
 
 _client = None
@@ -102,11 +108,8 @@ def generate_sync_code() -> str:
     return f"VIBE-{part1}-{part2}"
 
 @app.get("/")
-def health_check():
-    return {
-        "status": "ok",
-        "detail": "meow from AS1AW!"
-    }
+def redirect_to_frontend(request: Request):
+    return RedirectResponse(url=REDIRECT_TO)
 
 @app.get("/api/health")
 def health_check():
