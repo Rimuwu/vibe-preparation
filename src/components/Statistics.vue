@@ -733,39 +733,6 @@ export default {
       }
     }, { deep: true });
 
-    // Themes Study Stats
-    const themesStats = computed(() => {
-      let totalPctSum = 0;
-      let completedCount = 0;
-      const modules = modulesStore.modules;
-      if (modules.length === 0) {
-        return { averagePct: 0, completedCount: 0, totalCount: 0 };
-      }
-
-      modules.forEach(mod => {
-        const qs = allModulesQuestions.value[mod.id] || [];
-        if (qs.length === 0) return;
-        let answered = 0;
-        qs.forEach(q => {
-          const qStat = targetStats.value[q.id] || {};
-          if ((qStat.correctCount || 0) + (qStat.incorrectCount || 0) > 0) {
-            answered++;
-          }
-        });
-        const pct = (answered / qs.length) * 100;
-        totalPctSum += pct;
-        if (answered === qs.length) {
-          completedCount++;
-        }
-      });
-
-      const averagePct = Math.round(totalPctSum / modules.length);
-      return {
-        averagePct,
-        completedCount,
-        totalCount: modules.length
-      };
-    });
 
     // Chart.js rendering setup
     const activityChartCanvas = ref(null);
@@ -961,6 +928,31 @@ export default {
           accuracyPct: totalAttempts > 0 ? Math.round((correctAttempts / totalAttempts) * 100) : 0
         };
       });
+    });
+
+    // Themes Study Stats (based on categories of the active module)
+    const themesStats = computed(() => {
+      const categories = categoryBreakdown.value;
+      if (categories.length === 0) {
+        return { averagePct: 0, completedCount: 0, totalCount: 0 };
+      }
+
+      let totalPctSum = 0;
+      let completedCount = 0;
+
+      categories.forEach(cat => {
+        totalPctSum += cat.studyPct;
+        if (cat.answered === cat.total) {
+          completedCount++;
+        }
+      });
+
+      const averagePct = Math.round(totalPctSum / categories.length);
+      return {
+        averagePct,
+        completedCount,
+        totalCount: categories.length
+      };
     });
 
     const tagBreakdown = computed(() => {
