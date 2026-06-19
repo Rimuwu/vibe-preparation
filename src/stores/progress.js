@@ -17,6 +17,7 @@ export const useProgressStore = defineStore('progress', {
     syncCode: localStorage.getItem(SYNC_CODE_KEY) || '',
     syncTimestamp: localStorage.getItem(SYNC_TIME_KEY) || '',
     deviceId: localStorage.getItem(DEVICE_ID_KEY) || '',
+    smartSearchEnabled: localStorage.getItem('vibe_prep_smart_search') !== 'false',
     customLists: [],
     activityLog: {},
     viewingProfileData: null,
@@ -229,7 +230,42 @@ export const useProgressStore = defineStore('progress', {
       this.activityLog = {};
       localStorage.setItem(STORAGE_KEY, JSON.stringify({}));
       localStorage.setItem('vibe_prep_activity_log', JSON.stringify({}));
+      
+      // Clear ticket stats
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('vibe_prep_ticket_stats_')) {
+          localStorage.removeItem(key);
+        }
+      }
+      
       this.touchSyncTimestamp();
+    },
+
+    recordTicketStats(moduleId, ticketId, correctCount, totalCount) {
+      try {
+        const key = `vibe_prep_ticket_stats_${moduleId}`;
+        const raw = localStorage.getItem(key);
+        const stats = raw ? JSON.parse(raw) : {};
+
+        if (!stats[ticketId]) {
+          stats[ticketId] = {
+            correct: 0,
+            total: totalCount,
+            attempts: 0
+          };
+        }
+
+        const tStat = stats[ticketId];
+        tStat.attempts++;
+        tStat.correct = Math.max(tStat.correct, correctCount);
+        tStat.total = totalCount;
+
+        localStorage.setItem(key, JSON.stringify(stats));
+        this.touchSyncTimestamp();
+      } catch (e) {
+        console.error('Failed to record ticket stats:', e);
+      }
     },
 
     getGlobalStats(questions = []) {
@@ -823,6 +859,88 @@ export const useProgressStore = defineStore('progress', {
     clearViewingProfileDataOnly() {
       this.viewingProfileData = null;
       this.viewingProfileNickname = '';
+    },
+
+    setSmartSearch(enabled) {
+      this.smartSearchEnabled = enabled;
+      localStorage.setItem('vibe_prep_smart_search', enabled.toString());
+    },
+
+    isQueryMatch(q, query) {
+      if (!query) return true;
+      const cleanQuery = query.toLowerCase().trim();
+      if (!cleanQuery) return true;
+
+      const titleClean = q.title.toLowerCase();
+      const catClean = q.category.toLowerCase();
+      const tags = q.tags || [];
+
+      // Check simple substring match first
+      const tagsStr = tags.join(' ');
+      if (titleClean.includes(cleanQuery) || catClean.includes(cleanQuery) || tagsStr.includes(cleanQuery)) {
+        return true;
+      }
+
+      // If smart search is disabled, we stop here
+      if (!this.smartSearchEnabled) {
+        return false;
+      }
+
+      // Smart search typo/word mismatch logic
+      const queryWords = cleanQuery.split(/\s+/).filter(Boolean);
+      if (queryWords.length === 0) return true;
+
+      // Helper function to calculate levenshtein distance
+      const levenshtein = (a, b) => {
+        const matrix = [];
+        for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+        for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+        for (let i = 1; i <= b.length; i++) {
+          for (let j = 1; j <= a.length; j++) {
+            if (b.charAt(i - 1) === a.charAt(j - 1)) {
+              matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+              matrix[i][j] = Math.min(
+                matrix[i - 1][j - 1] + 1,
+                matrix[i][j - 1] + 1,
+                matrix[i - 1][j] + 1
+              );
+            }
+          }
+        }
+        return matrix[b.length][a.length];
+      };
+
+      // Split the title/category/tags into words
+      const textWords = [
+        ...titleClean.split(/[^\wа-яё0-9_-]+/iu).filter(Boolean),
+        ...catClean.split(/[^\wа-яё0-9_-]+/iu).filter(Boolean),
+        ...tags
+      ];
+
+      // Each query word must match at least one word in the text (either as a prefix/substring or via Levenshtein edit distance)
+      return queryWords.every(qWord => {
+        // Try substring match on the entire title/category/tags first for this word
+        if (titleClean.includes(qWord) || catClean.includes(qWord) || tagsStr.includes(qWord)) {
+          return true;
+        }
+
+        // Try fuzzy match on individual words
+        return textWords.some(tWord => {
+          if (tWord.includes(qWord) || qWord.includes(tWord)) {
+            return true;
+          }
+          // Typo tolerance (only for words > 3 characters)
+          if (qWord.length > 3 && tWord.length > 3) {
+            const dist = levenshtein(qWord, tWord);
+            const maxAllowedDist = Math.max(1, Math.floor(qWord.length * 0.25)); // ~25% typo tolerance
+            if (dist <= maxAllowedDist) {
+              return true;
+            }
+          }
+          return false;
+        });
+      });
     }
   }
 });

@@ -110,6 +110,38 @@
 
       <div style="height: 1px; background: var(--border-color); margin-bottom: 1.25rem;"></div>
 
+      <!-- General Settings Section -->
+      <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
+        <h3
+          style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 0;"
+        >
+          Общие настройки
+        </h3>
+
+        <!-- Smart Search Toggle -->
+        <div
+          style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: var(--radius-md);"
+        >
+          <div>
+            <span style="font-size: 0.92rem; color: #ffffff; display: block; font-weight: 500;">Умный поиск</span>
+            <span style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-top: 0.15rem; line-height: 1.3;">
+              Поиск с опечатками, перестановкой слов и умным сопоставлением
+            </span>
+          </div>
+          
+          <label class="switch-container" style="position: relative; display: inline-block; width: 44px; height: 24px;">
+            <input
+              type="checkbox"
+              style="opacity: 0; width: 0; height: 0;"
+              v-model="smartSearchModel"
+            />
+            <span class="slider" :style="sliderStyle"></span>
+          </label>
+        </div>
+      </div>
+
+      <div style="height: 1px; background: var(--border-color); margin-bottom: 1.25rem;"></div>
+
       <!-- Local Backup section -->
       <div style="display: flex; flex-direction: column; gap: 0.75rem;">
         <h3
@@ -369,6 +401,27 @@ export default {
       reader.readAsText(file);
     };
 
+    const smartSearchModel = computed({
+      get: () => progressStore.smartSearchEnabled,
+      set: (val) => progressStore.setSmartSearch(val)
+    });
+
+    const sliderStyle = computed(() => {
+      const active = progressStore.smartSearchEnabled;
+      return {
+        position: 'absolute',
+        cursor: 'pointer',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: active ? 'var(--primary)' : '#333',
+        transition: '.3s',
+        borderRadius: '24px',
+        border: '1px solid var(--border-color)'
+      };
+    });
+
     return {
       progressStore,
       modulesStore,
@@ -383,7 +436,9 @@ export default {
       disconnectSync,
       exportLocalProgress,
       triggerImportInput,
-      importLocalProgress
+      importLocalProgress,
+      smartSearchModel,
+      sliderStyle
     };
   }
 };
@@ -392,6 +447,23 @@ export default {
 <style scoped>
 .screen {
   width: 100%;
+}
+
+.switch-container input:checked + .slider::before {
+  transform: translateX(20px);
+  background-color: #121212;
+}
+
+.slider::before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: var(--text-muted);
+  transition: .3s;
+  border-radius: 50%;
 }
 </style>
 

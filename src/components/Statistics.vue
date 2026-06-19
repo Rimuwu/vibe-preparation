@@ -402,16 +402,6 @@
     <div v-if="!progressStore.viewingProfileData" class="panel" style="flex-grow: 1;">
       <h3 style="font-size: 1rem; margin-bottom: 0.75rem; font-weight: 600;">Детализация по вопросам</h3>
 
-      <!-- Search query -->
-      <div class="search-box">
-        <input
-          type="text"
-          class="search-input"
-          placeholder="Поиск по вопросам и тегам..."
-          v-model="searchQuery"
-        />
-      </div>
-
       <!-- Filters Row -->
       <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
         <!-- Categories -->
@@ -466,17 +456,58 @@
         </select>
       </div>
 
-      <!-- Tag chip filtering cloud -->
-      <div v-if="allTags.size > 0" class="tag-filter-bar">
-        <span
-          v-for="tag in allTags"
-          :key="tag"
-          class="tag-badge"
-          :class="{ active: activeTagFilter === tag }"
-          @click="toggleTagFilter(tag)"
+      <!-- Collapsible Tag Filter Container -->
+      <div v-if="allTags.size > 0" class="tag-filter-container" style="border-top: 1px solid var(--border-color); padding-top: 0.5rem; margin-top: 0.25rem;">
+        <div 
+          @click="tagFilterCollapsed = !tagFilterCollapsed" 
+          style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;"
         >
-          {{ tag }}
-        </span>
+          <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500; display: flex; align-items: center; gap: 0.25rem;">
+            🏷️ Фильтр по тегам
+            <span v-if="activeTagFilter" class="brand-badge" style="font-size: 0.7rem; padding: 0.05rem 0.3rem;">
+              #{{ activeTagFilter }}
+            </span>
+          </span>
+          <div style="color: var(--text-muted); transition: transform 0.2s;" :style="{ transform: tagFilterCollapsed ? '' : 'rotate(180deg)' }">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+        </div>
+        
+        <div v-show="!tagFilterCollapsed" class="tag-filter-bar" style="margin-top: 0.5rem; border-top: none; padding-top: 0; margin-bottom: 0.25rem;">
+          <span
+            v-for="tag in allTags"
+            :key="tag"
+            class="tag-badge"
+            :class="['tag-' + tag, { active: activeTagFilter === tag }]"
+            @click="toggleTagFilter(tag)"
+          >
+            {{ tag }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Search query -->
+      <div class="search-box" style="position: relative; display: flex; align-items: center; margin-bottom: 0.5rem; margin-top: 0.5rem;">
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Поиск по вопросам и тегам..."
+          style="width: 100%; padding-right: 2.5rem;"
+          v-model="searchQuery"
+        />
+        <button
+          v-if="searchQuery"
+          style="position: absolute; right: 0.75rem; background: transparent; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0.25rem; transition: color 0.2s;"
+          title="Очистить поиск"
+          @click="searchQuery = ''"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
 
       <!-- Questions List container -->
@@ -506,7 +537,7 @@
                 v-for="tag in q.tags"
                 :key="tag"
                 class="tag-badge"
-                :class="{ active: activeTagFilter === tag }"
+                :class="['tag-' + tag, { active: activeTagFilter === tag }]"
                 @click.stop="toggleTagFilter(tag)"
               >
                 {{ tag }}
@@ -597,6 +628,13 @@ export default {
     const filterDifficulty = ref('all');
     const sortBy = ref('number_asc');
     const activeTagFilter = ref(null);
+    const tagFilterCollapsed = ref(true);
+
+    watch(activeTagFilter, (newVal) => {
+      if (newVal) {
+        tagFilterCollapsed.value = false;
+      }
+    });
 
     // Global Statistics Calculations
     const globalStats = computed(() => {
@@ -1035,6 +1073,22 @@ export default {
       });
       if (confirmed) {
         progressStore.resetAllStats();
+        // Immediately update rating data on leaderboard
+        if (progressStore.nickname) {
+          try {
+            const standardMods = modulesStore.modules.filter(m => !m.isCustom);
+            const resolvedMods = await Promise.all(
+              standardMods.map(async (m) => {
+                const qs = await modulesStore.loadQuestionsForModule(m);
+                return { id: m.id, name: m.name, questions: qs };
+              })
+            );
+            await progressStore.submitLeaderboardStats(progressStore.nickname, resolvedMods);
+            await fetchUserRank();
+          } catch (e) {
+            console.error('Failed to update leaderboard after reset:', e);
+          }
+        }
       }
     };
 
@@ -1049,9 +1103,7 @@ export default {
       const stats = targetStats.value;
 
       let list = modulesStore.questions.filter(q => {
-        const tagsStr = (q.tags || []).join(' ');
-        const matchQuery = q.title.toLowerCase().includes(query) || q.category.toLowerCase().includes(query) || tagsStr.includes(query);
-        if (!matchQuery) return false;
+        if (!progressStore.isQueryMatch(q, searchQuery.value)) return false;
 
         if (tagVal && (!q.tags || !q.tags.includes(tagVal))) return false;
 
@@ -1227,7 +1279,10 @@ export default {
       ctx.textAlign = 'right';
       ctx.font = '30px Roboto, sans-serif';
       ctx.fillStyle = '#9e9e9e';
-      const dateStr = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+      const now = new Date();
+      const datePart = now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+      const timePart = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const dateStr = `${datePart}, ${timePart}`;
       ctx.fillText(dateStr, 1130, 96);
 
       // Category Section
@@ -1510,7 +1565,10 @@ export default {
       ctx.textAlign = 'right';
       ctx.font = '30px Roboto, sans-serif';
       ctx.fillStyle = '#9e9e9e';
-      const dateStr = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+      const now = new Date();
+      const datePart = now.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+      const timePart = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const dateStr = `${datePart}, ${timePart}`;
       ctx.fillText(dateStr, 1130, 96);
 
       ctx.textAlign = 'left';
@@ -1642,6 +1700,7 @@ export default {
       filterDifficulty,
       sortBy,
       activeTagFilter,
+      tagFilterCollapsed,
       globalStats,
       testStats,
       themesStats,

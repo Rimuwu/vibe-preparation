@@ -61,7 +61,7 @@
               <div class="q-meta" id="card-front-meta">
                 <span>{{ currentQuestion.category }} • Вопрос {{ currentQuestion.number }}</span>
                 <div v-if="currentQuestion.tags && currentQuestion.tags.length > 0" class="tags-row">
-                  <span v-for="tag in currentQuestion.tags" :key="tag" class="tag-badge">{{ tag }}</span>
+                  <span v-for="tag in currentQuestion.tags" :key="tag" :class="['tag-badge', 'tag-' + tag]">{{ tag }}</span>
                 </div>
               </div>
               <div v-if="isQuestionDifficult" class="starred-badge">
@@ -430,13 +430,30 @@ export default {
           options.push({ text: c.text, isCorrect: false });
         });
       } else {
-        const correctAnswerText = stripMarkdown(q.shortAnswer || q.title);
+        let correctAnswerText = stripMarkdown(q.shortAnswer || q.title);
+        if (!correctAnswerText && q.shortAnswer) {
+          if (q.codeBlocks && q.codeBlocks.length > 0) {
+            correctAnswerText = q.codeBlocks[0].code;
+          }
+        }
+        if (!correctAnswerText) {
+          correctAnswerText = stripMarkdown(q.title);
+        }
         options.push({ text: correctAnswerText, isCorrect: true });
 
         // Distractors from other questions in modulesStore
         const distractors = modulesStore.questions
           .filter(other => other.id !== q.id && other.shortAnswer)
-          .map(other => stripMarkdown(other.shortAnswer))
+          .map(other => {
+            let text = stripMarkdown(other.shortAnswer);
+            if (!text && other.codeBlocks && other.codeBlocks.length > 0) {
+              text = other.codeBlocks[0].code;
+            }
+            if (!text) {
+              text = stripMarkdown(other.title);
+            }
+            return text;
+          })
           .filter(text => text && text !== correctAnswerText);
 
         const selectedDistractors = shuffleArray(distractors).slice(0, 3);

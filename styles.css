@@ -465,6 +465,37 @@ body {
   font-size: 0.68rem;
 }
 
+/* Color overrides for special tags */
+.tag-badge.tag-additionalquestion {
+  background: rgba(158, 158, 158, 0.12);
+  color: var(--text-muted);
+  border-color: rgba(158, 158, 158, 0.25);
+}
+.tag-badge.tag-additionalquestion:hover {
+  background: rgba(158, 158, 158, 0.22);
+  border-color: var(--text-muted);
+}
+.tag-badge.tag-additionalquestion.active {
+  background: var(--text-muted);
+  color: #121212;
+  border-color: var(--text-muted);
+}
+
+.tag-badge.tag-mainquestion {
+  background: var(--success-dark);
+  color: var(--success);
+  border-color: rgba(129, 201, 149, 0.25);
+}
+.tag-badge.tag-mainquestion:hover {
+  background: rgba(129, 201, 149, 0.22);
+  border-color: var(--success);
+}
+.tag-badge.tag-mainquestion.active {
+  background: var(--success);
+  color: #121212;
+  border-color: var(--success);
+}
+
 .tags-row {
   display: flex;
   flex-wrap: wrap;

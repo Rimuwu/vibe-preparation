@@ -84,29 +84,6 @@
         Поиск и фильтрация
       </h3>
 
-      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-        <input
-          type="text"
-          class="search-input"
-          placeholder="Поиск по вопросам и тегам..."
-          style="flex-grow: 1; min-width: 150px;"
-          v-model="searchQuery"
-        />
-      </div>
-
-      <!-- Tag cloud filter -->
-      <div v-if="allTags.size > 0" class="tag-filter-bar">
-        <span
-          v-for="tag in allTags"
-          :key="tag"
-          class="tag-badge"
-          :class="{ active: activeTagFilter === tag }"
-          @click="toggleTagFilter(tag)"
-        >
-          {{ tag }}
-        </span>
-      </div>
-
       <!-- Select filters row -->
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
         <!-- Category -->
@@ -161,6 +138,62 @@
           <option value="tags_asc">По тегам ↑</option>
           <option value="tags_desc">По тегам ↓</option>
         </select>
+      </div>
+
+      <!-- Collapsible Tag Filter Container -->
+      <div v-if="allTags.size > 0" class="tag-filter-container" style="border-top: 1px solid var(--border-color); padding-top: 0.5rem; margin-top: 0.25rem;">
+        <div 
+          @click="tagFilterCollapsed = !tagFilterCollapsed" 
+          style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;"
+        >
+          <span style="font-size: 0.82rem; color: var(--text-muted); font-weight: 500; display: flex; align-items: center; gap: 0.25rem;">
+            🏷️ Фильтр по тегам
+            <span v-if="activeTagFilter" class="brand-badge" style="font-size: 0.7rem; padding: 0.05rem 0.3rem;">
+              #{{ activeTagFilter }}
+            </span>
+          </span>
+          <div style="color: var(--text-muted); transition: transform 0.2s;" :style="{ transform: tagFilterCollapsed ? '' : 'rotate(180deg)' }">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+        </div>
+        
+        <div v-show="!tagFilterCollapsed" class="tag-filter-bar" style="margin-top: 0.5rem; border-top: none; padding-top: 0; margin-bottom: 0.25rem;">
+          <span
+            v-for="tag in allTags"
+            :key="tag"
+            class="tag-badge"
+            :class="['tag-' + tag, { active: activeTagFilter === tag }]"
+            @click="toggleTagFilter(tag)"
+          >
+            {{ tag }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Search input container with reset button -->
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; width: 100%;">
+        <div style="position: relative; flex-grow: 1; display: flex; align-items: center;">
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Поиск по вопросам и тегам..."
+            style="width: 100%; padding-right: 2.5rem;"
+            v-model="searchQuery"
+          />
+          <button
+            v-if="searchQuery"
+            style="position: absolute; right: 0.75rem; background: transparent; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0.25rem; transition: color 0.2s;"
+            title="Очистить поиск"
+            @click="searchQuery = ''"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -253,7 +286,7 @@
                 v-for="tag in q.tags"
                 :key="tag"
                 class="tag-badge"
-                :class="{ active: activeTagFilter === tag }"
+                :class="['tag-' + tag, { active: activeTagFilter === tag }]"
                 @click.stop="toggleTagFilter(tag)"
               >
                 {{ tag }}
@@ -342,6 +375,13 @@ export default {
     const filterDifficulty = ref('all');
     const sortBy = ref('number_asc');
     const activeTagFilter = ref(null);
+    const tagFilterCollapsed = ref(true);
+
+    watch(activeTagFilter, (newVal) => {
+      if (newVal) {
+        tagFilterCollapsed.value = false;
+      }
+    });
 
     const isSelectionMode = ref(false);
     const selectedQuestionIds = ref(new Set());
@@ -559,9 +599,7 @@ export default {
       const stats = progressStore.stats;
 
       let list = modulesStore.questions.filter(q => {
-        const tagsStr = (q.tags || []).join(' ');
-        const matchQuery = q.title.toLowerCase().includes(query) || q.category.toLowerCase().includes(query) || tagsStr.includes(query);
-        if (!matchQuery) return false;
+        if (!progressStore.isQueryMatch(q, searchQuery.value)) return false;
 
         if (tagVal && (!q.tags || !q.tags.includes(tagVal))) return false;
 
@@ -719,6 +757,7 @@ export default {
       filterDifficulty,
       sortBy,
       activeTagFilter,
+      tagFilterCollapsed,
       isSelectionMode,
       selectedQuestionIds,
       expandedQuestionIds,
