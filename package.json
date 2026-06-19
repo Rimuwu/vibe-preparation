@@ -1,6 +1,6 @@
 {
   "name": "vibe-preparation",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Flashcard preparation platform for exam questions",
   "type": "module",
   "scripts": {

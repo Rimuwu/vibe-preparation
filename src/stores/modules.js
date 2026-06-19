@@ -14,12 +14,12 @@ export const useModulesStore = defineStore('modules', {
     loading: false,
     categories: [],
   }),
-  
+
   actions: {
     async loadModules() {
       this.loading = true;
       const progressStore = useProgressStore();
-      
+
       const loadedModules = [];
 
       // 1. Load standard modules from modules/modules.json
@@ -59,19 +59,19 @@ export const useModulesStore = defineStore('modules', {
       this.loading = true;
       const progressStore = useProgressStore();
       const mod = this.modules.find(m => m.id === moduleId);
-      
+
       if (!mod) {
         this.loading = false;
-        throw new Error('Модуль не найден');
+        throw new Error(`Модуль ${moduleId} не найден`);
       }
 
       try {
         this.activeModule = mod;
         progressStore.setActiveModuleId(mod.id);
-        
+
         // Load questions
         this.questions = await this.loadQuestionsForModule(mod);
-        
+
         // Extract categories
         this.categories = Array.from(new Set(this.questions.map(q => q.category || 'Общее')));
       } catch (err) {
@@ -82,22 +82,26 @@ export const useModulesStore = defineStore('modules', {
       }
     },
 
-    async loadQuestionsForModule(mod) {
+    async loadQuestionsForModule(mod, nocache = false) {
       let mdText = '';
       if (mod.isCustom) {
         mdText = mod.mdText;
       } else {
-        const resp = await fetch(mod.file);
+        const resp = await fetch(mod.file + '?' + (nocache ? Date.now() : ''));
         if (!resp.ok) throw new Error('Файл темы не найден');
         mdText = await resp.text();
       }
 
+      if (nocache) {
+        console.log(`Module timestamp ${mod.id}:`, Date.now());
+      }
+
       const parsedQuestions = parseMarkdown(mdText);
-      
+
       // Post-process questions: namespace IDs and apply overrides
       parsedQuestions.forEach(q => {
         q.id = `${mod.id}_${q.id}`;
-        
+
         // Apply overrides
         const overrides = this.getQuestionOverrides();
         if (overrides[q.id]) {
@@ -140,14 +144,14 @@ export const useModulesStore = defineStore('modules', {
         if (!allAdded[moduleId]) {
           allAdded[moduleId] = [];
         }
-        
+
         const index = allAdded[moduleId].findIndex(q => q.id === question.id);
         if (index > -1) {
           allAdded[moduleId][index] = question;
         } else {
           allAdded[moduleId].push(question);
         }
-        
+
         localStorage.setItem(ADDED_KEY, JSON.stringify(allAdded));
         useProgressStore().touchSyncTimestamp();
       } catch (e) {
@@ -201,7 +205,7 @@ export const useModulesStore = defineStore('modules', {
         const allAdded = rawAdded ? JSON.parse(rawAdded) : {};
         const addedList = allAdded[moduleId] || [];
         const addedIndex = addedList.findIndex(item => item.id === questionId);
-        
+
         if (addedIndex > -1) {
           Object.assign(addedList[addedIndex], updatedFields);
           allAdded[moduleId] = addedList;
@@ -246,7 +250,7 @@ export const useModulesStore = defineStore('modules', {
       const list = customRaw ? JSON.parse(customRaw) : [];
       list.push(newMod);
       localStorage.setItem(CUSTOM_MODS_KEY, JSON.stringify(list));
-      
+
       this.modules.push(newMod);
       useProgressStore().touchSyncTimestamp();
       return newMod;
@@ -259,9 +263,9 @@ export const useModulesStore = defineStore('modules', {
         list = list.filter(m => m.id !== moduleId);
         localStorage.setItem(CUSTOM_MODS_KEY, JSON.stringify(list));
       }
-      
+
       this.modules = this.modules.filter(m => m.id !== moduleId);
-      
+
       const progressStore = useProgressStore();
       if (progressStore.activeModuleId === moduleId) {
         this.activeModule = null;
@@ -359,7 +363,7 @@ export const useModulesStore = defineStore('modules', {
             const list = customRaw ? JSON.parse(customRaw) : [];
             list.push(newMod);
             localStorage.setItem(CUSTOM_MODS_KEY, JSON.stringify(list));
-            
+
             this.modules.push(newMod);
             useProgressStore().touchSyncTimestamp();
             resolve(newMod);

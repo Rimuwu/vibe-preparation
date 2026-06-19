@@ -317,7 +317,7 @@ export default {
           const standardMods = modulesStore.modules.filter(m => !m.isCustom);
           const resolvedMods = await Promise.all(
             standardMods.map(async (m) => {
-              const qs = await modulesStore.loadQuestionsForModule(m);
+              const qs = await modulesStore.loadQuestionsForModule(m, true);
               return { id: m.id, name: m.name, questions: qs };
             })
           );
