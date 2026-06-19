@@ -41,11 +41,11 @@ export const useProgressStore = defineStore('progress', {
   }),
   
   actions: {
-    init() {
+    async init() {
       this.loadStats();
       this.loadCustomLists();
       this.getOrCreateDeviceId();
-      this.resolveApiUrl();
+      await this.resolveApiUrl(); // Must resolve before any API calls
       this.restoreActiveSession();
     },
     

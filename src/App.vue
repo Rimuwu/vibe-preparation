@@ -304,8 +304,8 @@ export default {
     });
 
     onMounted(async () => {
-      // Initialize stores
-      progressStore.init();
+      // Initialize stores — must await so apiUrl is resolved before any API calls
+      await progressStore.init();
       await modulesStore.loadModules();
 
       // Silent cloud sync on start
