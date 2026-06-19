@@ -129,7 +129,17 @@
 
       <div v-else>
         <!-- Rating Stats Grid -->
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1rem;">
+        <div class="rating-grid-wrapper" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1rem;">
+          <div class="rating-stat-card rank-card" :class="['rank-' + userRank]">
+            <div class="rating-num">
+              <span v-if="userRank === 1">🥇 1</span>
+              <span v-else-if="userRank === 2">🥈 2</span>
+              <span v-else-if="userRank === 3">🥉 3</span>
+              <span v-else-if="userRank">{{ userRank }}</span>
+              <span v-else>—</span>
+            </div>
+            <div class="rating-label">Место</div>
+          </div>
           <div class="rating-stat-card">
             <div class="rating-num">{{ testStats.accuracy }}%</div>
             <div class="rating-label">Точность</div>
@@ -164,6 +174,15 @@
             ></div>
           </div>
         </div>
+
+        <!-- Share Rating Card Button -->
+        <button
+          class="btn-action"
+          style="width: 100%; margin-top: 1.25rem; border-radius: var(--radius-sm); font-size: 0.85rem; padding: 0.65rem 1.25rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; border: 1px solid rgba(138, 180, 248, 0.25); background: rgba(138, 180, 248, 0.06); color: #8ab4f8; font-weight: 500;"
+          @click="generateRatingShareCard"
+        >
+          <span>🏆</span> Поделиться карточкой рейтинга
+        </button>
       </div>
     </div>
 
@@ -611,6 +630,50 @@ export default {
       return { totalCorrect, totalIncorrect, answeredCount, totalQuestions: questions.length, totalAttempts, accuracy };
     });
 
+    const userRank = ref(null);
+    const isLoadingRank = ref(false);
+
+    const fetchUserRank = async () => {
+      userRank.value = null;
+      const activeMod = modulesStore.activeModule;
+      if (!activeMod || activeMod.isCustom) return;
+
+      isLoadingRank.value = true;
+      try {
+        const res = await fetch(`${progressStore.apiUrl}/api/leaderboard/${activeMod.id}`);
+        if (res.ok) {
+          const entries = await res.json();
+          let match = null;
+          if (progressStore.viewingProfileData) {
+            const userId = route.query.user;
+            match = entries.find(e => e.id === userId);
+          } else {
+            if (progressStore.nickname) {
+              match = entries.find(e => e.nickname === progressStore.nickname);
+            }
+          }
+          if (match) {
+            userRank.value = match.rank;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch user rank:', e);
+      } finally {
+        isLoadingRank.value = false;
+      }
+    };
+
+    watch(
+      [
+        () => modulesStore.activeModule,
+        () => progressStore.viewingProfileData,
+        () => route.query.user
+      ],
+      () => {
+        fetchUserRank();
+      }
+    );
+
     const streakCount = computed(() => {
       return progressStore.getStreak();
     });
@@ -828,6 +891,7 @@ export default {
 
     onMounted(() => {
       renderActivityChart();
+      fetchUserRank();
     });
 
     onUnmounted(() => {
@@ -1342,6 +1406,218 @@ export default {
       });
     };
 
+    const generateRatingShareCard = () => {
+      const activeModule = modulesStore.activeModule;
+      if (!activeModule) return;
+
+      const stats = testStats.value;
+      const rank = userRank.value;
+      const nickname = progressStore.viewingProfileData ? progressStore.viewingProfileNickname : progressStore.nickname;
+
+      let primaryColor = '#8ab4f8';
+      let bgGradStart = '#121212';
+      let bgGradEnd = '#1e1f20';
+      let glowColor = 'rgba(138, 180, 248, 0.08)';
+      let rankText = 'ВНЕ РЕЙТИНГА';
+      let rankEmoji = '🏆';
+
+      if (rank === 1) {
+        primaryColor = '#fbbc04';
+        bgGradStart = '#1a1300';
+        bgGradEnd = '#0d0a00';
+        glowColor = 'rgba(251, 188, 4, 0.16)';
+        rankText = '1 МЕСТО';
+        rankEmoji = '🥇';
+      } else if (rank === 2) {
+        primaryColor = '#bcc0c4';
+        bgGradStart = '#121417';
+        bgGradEnd = '#08090a';
+        glowColor = 'rgba(188, 192, 196, 0.16)';
+        rankText = '2 МЕСТО';
+        rankEmoji = '🥈';
+      } else if (rank === 3) {
+        primaryColor = '#d7785c';
+        bgGradStart = '#16110f';
+        bgGradEnd = '#0b0807';
+        glowColor = 'rgba(215, 120, 92, 0.16)';
+        rankText = '3 МЕСТО';
+        rankEmoji = '🥉';
+      } else if (rank) {
+        rankText = `${rank} МЕСТО`;
+        rankEmoji = '🎖️';
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 1200;
+      canvas.height = 900;
+      const ctx = canvas.getContext('2d');
+
+      const grad = ctx.createLinearGradient(0, 0, 1200, 900);
+      grad.addColorStop(0, bgGradStart);
+      grad.addColorStop(1, bgGradEnd);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 1200, 900);
+
+      ctx.strokeStyle = rank ? `rgba(${rank === 1 ? '251, 188, 4' : rank === 2 ? '188, 192, 196' : '215, 120, 92'}, 0.02)` : 'rgba(138, 180, 248, 0.02)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 1200; i += 60) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, 900);
+        ctx.stroke();
+      }
+      for (let j = 0; j < 900; j += 60) {
+        ctx.beginPath();
+        ctx.moveTo(0, j);
+        ctx.lineTo(1200, j);
+        ctx.stroke();
+      }
+
+      const glow = ctx.createRadialGradient(600, 450, 0, 600, 450, 500);
+      glow.addColorStop(0, glowColor);
+      glow.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, 1200, 900);
+
+      ctx.strokeStyle = rank ? primaryColor : '#3c4043';
+      ctx.lineWidth = 6;
+      ctx.strokeRect(30, 30, 1140, 840);
+
+      ctx.fillStyle = primaryColor;
+      ctx.fillRect(30, 30, 12, 840);
+
+      ctx.font = 'bold 36px Roboto, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      const logoText = 'Preparation.vibe';
+      ctx.fillText(logoText, 80, 100);
+      const logoWidth = ctx.measureText(logoText).width;
+
+      ctx.font = 'bold 20px Roboto, sans-serif';
+      ctx.strokeStyle = rank ? `rgba(${rank === 1 ? '251, 188, 4' : rank === 2 ? '188, 192, 196' : '215, 120, 92'}, 0.3)` : 'rgba(138, 180, 248, 0.3)';
+      ctx.lineWidth = 2;
+      const badgeX = 80 + logoWidth + 15;
+      const badgeY = 72;
+      const badgeW = 70;
+      const badgeH = 36;
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 6);
+      } else {
+        ctx.rect(badgeX, badgeY, badgeW, badgeH);
+      }
+      ctx.stroke();
+      ctx.fillStyle = rank ? `rgba(${rank === 1 ? '251, 188, 4' : rank === 2 ? '188, 192, 196' : '215, 120, 92'}, 0.1)` : 'rgba(138, 180, 248, 0.1)';
+      ctx.fill();
+      ctx.fillStyle = primaryColor;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('AS1', badgeX + badgeW / 2, badgeY + badgeH / 2);
+
+      ctx.textAlign = 'right';
+      ctx.font = '30px Roboto, sans-serif';
+      ctx.fillStyle = '#9e9e9e';
+      const dateStr = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+      ctx.fillText(dateStr, 1130, 96);
+
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle = primaryColor;
+      ctx.font = 'bold 24px Roboto, sans-serif';
+      ctx.fillText('РЕЙТИНГОВАЯ КАРТОЧКА', 80, 190);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 64px Roboto, sans-serif';
+      ctx.fillText(nickname || 'Аноним', 80, 260);
+
+      ctx.fillStyle = '#9e9e9e';
+      ctx.font = '30px Roboto, sans-serif';
+      wrapText(ctx, `Тема: ${activeModule.name}`, 80, 315, 1040, 42);
+
+      ctx.strokeStyle = rank ? `rgba(${rank === 1 ? '251, 188, 4' : rank === 2 ? '188, 192, 196' : '215, 120, 92'}, 0.2)` : 'rgba(60, 64, 67, 0.8)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(80, 390);
+      ctx.lineTo(1120, 390);
+      ctx.stroke();
+
+      const ringX = 300;
+      const ringY = 620;
+      const radius = 140;
+
+      ctx.strokeStyle = rank ? `rgba(${rank === 1 ? '251, 188, 4' : rank === 2 ? '188, 192, 196' : '215, 120, 92'}, 0.05)` : 'rgba(255,255,255,0.02)';
+      ctx.lineWidth = 32;
+      ctx.beginPath();
+      ctx.arc(ringX, ringY, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#2d2e30';
+      ctx.lineWidth = 18;
+      ctx.beginPath();
+      ctx.arc(ringX, ringY, radius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = primaryColor;
+      ctx.lineWidth = 18;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      const startAngle = -Math.PI / 2;
+      const endAngle = startAngle + (Math.PI * 2 * (stats.accuracy / 100));
+      ctx.arc(ringX, ringY, radius, startAngle, endAngle);
+      ctx.stroke();
+
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = '84px Roboto, sans-serif';
+      ctx.fillText(rankEmoji, ringX, ringY - 20);
+
+      ctx.font = 'bold 24px Roboto, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(rankText, ringX, ringY + 45);
+
+      const startX = 580;
+      const startY = 475;
+      const rowHeight = 65;
+
+      const items = [
+        { label: 'Место в рейтинге', value: rank ? `${rank} место` : 'Вне рейтинга', color: primaryColor },
+        { label: 'Точность ответов', value: `${stats.accuracy}%`, color: '#81c995' },
+        { label: 'Вопросов пройдено', value: `${stats.answeredCount} из ${stats.totalQuestions}`, color: '#ffffff' },
+        { label: 'Всего попыток (ответов)', value: `${stats.totalAttempts}`, color: '#9e9e9e' },
+        { label: 'Правильных ответов', value: `${stats.totalCorrect}`, color: '#81c995' }
+      ];
+
+      ctx.textAlign = 'left';
+      items.forEach((item, idx) => {
+        const y = startY + (idx * rowHeight);
+
+        ctx.fillStyle = item.color;
+        ctx.beginPath();
+        ctx.arc(startX, y - 8, 8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.font = '28px Roboto, sans-serif';
+        ctx.fillStyle = '#9e9e9e';
+        ctx.fillText(item.label, startX + 30, y);
+
+        ctx.font = 'bold 32px Roboto, sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(item.value, startX + 390, y);
+      });
+
+      ctx.textAlign = 'center';
+      ctx.font = '26px Roboto, sans-serif';
+      ctx.fillStyle = '#5f6368';
+      ctx.fillText('Подготовлено на платформе rimuwu.github.io/vibe-preparation/', 600, 845);
+
+      const imgUrl = canvas.toDataURL('image/png');
+      showShareCard({
+        imgUrl,
+        canvas
+      });
+    };
+
     function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
       const words = text.split(' ');
       let line = '';
@@ -1395,7 +1671,9 @@ export default {
       lastActiveDate,
       activityChartCanvas,
       targetStats,
-      goBackFromProfile
+      goBackFromProfile,
+      userRank,
+      generateRatingShareCard
     };
   }
 };
