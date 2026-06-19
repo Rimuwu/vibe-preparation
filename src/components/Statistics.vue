@@ -1781,9 +1781,8 @@ export default {
 .stats-row-title {
   font-size: 0.9rem;
   font-weight: 400;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .stats-row-sub {
@@ -1986,11 +1985,14 @@ export default {
 @media (max-width: 480px) {
   .stats-row {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 0.5rem;
   }
+  .stats-row-info {
+    width: 100%;
+  }
   .stats-row-meta {
-    align-self: flex-end;
+    align-self: flex-start;
   }
 }
 
@@ -2000,6 +2002,76 @@ export default {
 .stats-row.read-only:hover {
   border-color: var(--border-color);
   background: rgba(255, 255, 255, 0.01);
+}
+
+/* Rating Panel Grid & Cards */
+.rating-grid-wrapper {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+@media (min-width: 576px) {
+  .rating-grid-wrapper {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.rating-stat-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 0.5rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.rating-stat-card:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+}
+.rating-num {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+.rating-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+/* Premium Rank Styling */
+.rating-stat-card.rank-card {
+  border-width: 1px;
+}
+.rating-stat-card.rank-card.rank-1 {
+  background: linear-gradient(135deg, rgba(251, 188, 4, 0.08) 0%, rgba(251, 188, 4, 0.02) 100%);
+  border-color: rgba(251, 188, 4, 0.4);
+  box-shadow: 0 0 15px rgba(251, 188, 4, 0.08);
+}
+.rating-stat-card.rank-card.rank-1 .rating-num {
+  color: #fdd663;
+  text-shadow: 0 0 8px rgba(251, 188, 4, 0.3);
+}
+.rating-stat-card.rank-card.rank-2 {
+  background: linear-gradient(135deg, rgba(188, 192, 196, 0.08) 0%, rgba(188, 192, 196, 0.02) 100%);
+  border-color: rgba(188, 192, 196, 0.4);
+  box-shadow: 0 0 15px rgba(188, 192, 196, 0.08);
+}
+.rating-stat-card.rank-card.rank-2 .rating-num {
+  color: #e3e3e3;
+  text-shadow: 0 0 8px rgba(188, 192, 196, 0.3);
+}
+.rating-stat-card.rank-card.rank-3 {
+  background: linear-gradient(135deg, rgba(215, 120, 92, 0.08) 0%, rgba(215, 120, 92, 0.02) 100%);
+  border-color: rgba(215, 120, 92, 0.4);
+  box-shadow: 0 0 15px rgba(215, 120, 92, 0.08);
+}
+.rating-stat-card.rank-card.rank-3 .rating-num {
+  color: #fcb6b0;
+  text-shadow: 0 0 8px rgba(215, 120, 92, 0.3);
 }
 </style>
 
