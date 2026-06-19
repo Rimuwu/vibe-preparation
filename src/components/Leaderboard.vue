@@ -139,6 +139,7 @@ export default {
     });
 
     onMounted(async () => {
+      console.log('[Leaderboard] onMounted, apiUrl:', progressStore.apiUrl, 'nickname:', progressStore.nickname);
       // Fetch details from modules list if loaded
       if (standardModules.value.length > 0) {
         // Find default selection
@@ -148,10 +149,11 @@ export default {
         } else {
           selectedModuleId.value = standardModules.value[0].id;
         }
-        
+
         // Auto push latest test statistics on screen enter
         if (progressStore.nickname) {
           try {
+            console.log('[Leaderboard] Auto-pushing stats for', progressStore.nickname);
             const mods = await Promise.all(
               standardModules.value.map(async (m) => {
                 const qs = await modulesStore.loadQuestionsForModule(m);
@@ -160,10 +162,10 @@ export default {
             );
             await progressStore.pushLeaderboardStatsSilently(mods);
           } catch (e) {
-            console.warn('Failed to push leaderboard stats silently on mount:', e);
+            console.warn('[Leaderboard] Auto-push failed:', e);
           }
         }
-        
+
         loadLeaderboard();
       }
     });
@@ -200,8 +202,9 @@ export default {
         return;
       }
 
+      console.log('[Leaderboard] saveNickname called', { nickname, apiUrl: progressStore.apiUrl });
       savingNickname.value = true;
-      
+
       try {
         // Standard modules validation
         const mods = await Promise.all(
@@ -210,8 +213,10 @@ export default {
             return { id: m.id, name: m.name, questions: qs };
           })
         );
+        console.log('[Leaderboard] Loaded modules for submit:', mods.map(m => m.id));
 
         const res = await progressStore.submitLeaderboardStats(nickname, mods);
+        console.log('[Leaderboard] submitLeaderboardStats result:', res);
         if (res.success) {
           progressStore.saveNickname(nickname);
           showAlert({
@@ -226,6 +231,7 @@ export default {
           });
         }
       } catch (e) {
+        console.error('[Leaderboard] saveNickname exception:', e);
         showAlert({ message: 'Ошибка при сохранении никнейма: ' + e.message });
       } finally {
         savingNickname.value = false;

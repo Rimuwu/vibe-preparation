@@ -652,56 +652,97 @@ export const useProgressStore = defineStore('progress', {
     },
 
     async submitLeaderboardStats(nickname, standardModules) {
-      if (standardModules.length === 0) return { success: true };
+      console.log('[Leaderboard] submitLeaderboardStats called', { nickname, modulesCount: standardModules.length, apiUrl: this.apiUrl });
+      if (standardModules.length === 0) {
+        console.log('[Leaderboard] No modules, skipping');
+        return { success: true };
+      }
 
       let syncCode = this.syncCode;
+      console.log('[Leaderboard] Current syncCode:', syncCode || '(none)');
 
       // Auto generate sync code if empty
       if (!syncCode) {
+        console.log('[Leaderboard] No sync code — generating one automatically...');
         try {
           syncCode = await this.cloudGenerateSyncCode();
+          console.log('[Leaderboard] Generated syncCode:', syncCode);
         } catch (e) {
+          console.error('[Leaderboard] Failed to generate sync code:', e);
           return { success: false, error: 'Для сохранения никнейма требуется синхронизация, но сервер недоступен.' };
         }
       }
 
+      // Helper: POST with up to 3 retries and exponential back-off
+      const postWithRetry = async (url, body, maxAttempts = 3) => {
+        let lastError;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            console.log(`[Leaderboard] POST attempt ${attempt}/${maxAttempts} →`, url, body);
+            const res = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(body)
+            });
+            console.log(`[Leaderboard] Response attempt ${attempt}: status ${res.status}`);
+            return res;
+          } catch (e) {
+            lastError = e;
+            console.warn(`[Leaderboard] Network error on attempt ${attempt}:`, e.message);
+            if (attempt < maxAttempts) {
+              const delay = 500 * attempt; // 500ms, 1000ms
+              console.log(`[Leaderboard] Retrying in ${delay}ms...`);
+              await new Promise(r => setTimeout(r, delay));
+            }
+          }
+        }
+        throw lastError;
+      };
+
       let errors = [];
       for (const mod of standardModules) {
         try {
-          // Compute stats from local state for standard modules
           const modStats = this.getTestGlobalStats(mod.questions);
-          if (modStats.answeredCount === 0) continue; // No attempts, no need to push
+          console.log(`[Leaderboard] Module "${mod.id}": answeredCount=${modStats.answeredCount}, total=${modStats.totalQuestions}, accuracy=${modStats.accuracy}`);
 
-          const res = await fetch(`${this.apiUrl}/api/leaderboard`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              profileId: syncCode,
-              nickname: nickname,
-              moduleId: mod.id,
-              completedCount: modStats.answeredCount,
-              totalCount: modStats.totalQuestions,
-              accuracy: modStats.accuracy
-            })
+          const res = await postWithRetry(`${this.apiUrl}/api/leaderboard`, {
+            profileId: syncCode,
+            nickname: nickname,
+            moduleId: mod.id,
+            completedCount: modStats.answeredCount,
+            totalCount: modStats.totalQuestions,
+            accuracy: modStats.accuracy
           });
 
           if (!res.ok) {
             const errData = await res.json().catch(() => ({}));
-            errors.push(`${mod.name}: ${errData.detail || 'Неизвестная ошибка сервера'}`);
+            const msg = `${mod.name}: ${errData.detail || 'Неизвестная ошибка сервера'}`;
+            console.error('[Leaderboard] Server error:', msg);
+            errors.push(msg);
+          } else {
+            console.log(`[Leaderboard] ✓ Module "${mod.id}" pushed successfully`);
           }
         } catch (e) {
-          errors.push(`${mod.name}: Нет соединения с сервером`);
+          const msg = `${mod.name}: Нет соединения с сервером (${e.message})`;
+          console.error('[Leaderboard] Fatal error for module:', msg);
+          errors.push(msg);
         }
       }
 
       if (errors.length > 0) {
+        console.warn('[Leaderboard] Finished with errors:', errors);
         return { success: false, error: errors.join('\n') };
       }
+      console.log('[Leaderboard] All modules pushed successfully');
       return { success: true };
     },
 
     async pushLeaderboardStatsSilently(standardModules) {
-      if (!this.nickname) return;
+      if (!this.nickname) {
+        console.log('[Leaderboard] pushLeaderboardStatsSilently: no nickname set, skipping');
+        return;
+      }
+      console.log('[Leaderboard] pushLeaderboardStatsSilently: pushing for nickname:', this.nickname);
       await this.submitLeaderboardStats(this.nickname, standardModules);
     },
 
